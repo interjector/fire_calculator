@@ -118,9 +118,9 @@ if 'calculator' in st.session_state:
     # FIRE Targets
     st.subheader("FIRE Targets by Type")
     fire_targets_df = pd.DataFrame([
-        {"Type": "Lean FIRE", "Amount": f"${st.session_state.fire_targets['lean']:,.0f}"},
-        {"Type": "Regular FIRE", "Amount": f"${st.session_state.fire_targets['regular']:,.0f}"},
-        {"Type": "Fat FIRE", "Amount": f"${st.session_state.fire_targets['fat']:,.0f}"}
+        {"Type": "Lean FIRE", "Amount": f"${st.session_state.fire_targets['lean']['target_portfolio']:,.0f}"},
+        {"Type": "Regular FIRE", "Amount": f"${st.session_state.fire_targets['regular']['target_portfolio']:,.0f}"},
+        {"Type": "Fat FIRE", "Amount": f"${st.session_state.fire_targets['fat']['target_portfolio']:,.0f}"}
     ])
     st.table(fire_targets_df)
     
