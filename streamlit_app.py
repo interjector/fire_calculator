@@ -255,9 +255,21 @@ if 'calculator' in st.session_state:
     display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending']
     column_names = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending']
     
-    # Add contribution column if available
+    # Add contribution column if available - show $0 during retirement years
     if 'annual_contribution' in display_projections.columns:
-        display_projections['Annual Contribution'] = display_projections['annual_contribution'].apply(lambda x: f"${x:,.0f}")
+        def format_contribution(row):
+            current_person_age = row['age']
+            contribution = row['annual_contribution']
+            
+            # If person has reached desired retirement age or achieved FIRE, no more contributions
+            if desired_retirement_age is not None and current_person_age >= desired_retirement_age:
+                return "$0"
+            elif row.get('fire_achieved', False):
+                return "$0"
+            else:
+                return f"${contribution:,.0f}"
+        
+        display_projections['Annual Contribution'] = display_projections.apply(format_contribution, axis=1)
         display_cols.append('Annual Contribution')
         column_names.append('Annual Contribution')
     
@@ -268,17 +280,36 @@ if 'calculator' in st.session_state:
         display_cols.append(income_label)
         column_names.append(income_label)
     
-    # Add required withdrawal column
-    if 'net_withdrawal_needed' in display_projections.columns:
-        # For scenarios with part-time income, show net withdrawal needed
-        display_projections['Required Withdrawal'] = display_projections['net_withdrawal_needed'].apply(lambda x: f"${x:,.0f}")
-    elif 'net_spending_need' in display_projections.columns:
-        # For other scenarios, show net spending need (after social security)
-        display_projections['Required Withdrawal'] = display_projections['net_spending_need'].apply(lambda x: f"${x:,.0f}")
-    else:
-        # Fallback: calculate required withdrawal as spending minus income sources
-        display_projections['Required Withdrawal'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
+    # Add required withdrawal column - only show during retirement years
+    def calculate_required_withdrawal(row):
+        # Only show withdrawal if person has reached retirement age or achieved FIRE
+        current_person_age = row['age']
+        has_achieved_fire = row.get('fire_achieved', False)
+        
+        # Check if in retirement (either reached desired retirement age or achieved FIRE)
+        is_retired = False
+        if desired_retirement_age is not None:
+            is_retired = current_person_age >= desired_retirement_age
+        else:
+            is_retired = has_achieved_fire
+            
+        if not is_retired:
+            return "$0"  # No withdrawal needed during working years
+            
+        # Calculate withdrawal amount based on available columns
+        if 'net_withdrawal_needed' in row:
+            # For scenarios with part-time income
+            withdrawal_amount = row['net_withdrawal_needed']
+        elif 'net_spending_need' in row:
+            # For other scenarios (after social security)
+            withdrawal_amount = row['net_spending_need']
+        else:
+            # Fallback: use inflation adjusted spending
+            withdrawal_amount = row['inflation_adjusted_spending']
+            
+        return f"${withdrawal_amount:,.0f}"
     
+    display_projections['Required Withdrawal'] = display_projections.apply(calculate_required_withdrawal, axis=1)
     display_cols.append('Required Withdrawal')
     column_names.append('Required Withdrawal')
     
