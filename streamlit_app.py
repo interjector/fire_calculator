@@ -6,14 +6,14 @@ from fire_calculator import FIRECalculator
 import numpy as np
 
 st.set_page_config(
-    page_title="FIRE Calculator",
+    page_title="VIBE FIRE Calculator",
     page_icon="🔥",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🔥 FIRE Calculator")
-st.markdown("Financial Independence, Retire Early Calculator")
+st.title("🔥 VIBE FIRE Calculator")
+st.markdown("Visualize Independence, Build Equity - Financial Independence, Retire Early Calculator")
 
 # Sidebar for inputs
 st.sidebar.header("Your Financial Profile")
@@ -364,9 +364,9 @@ else:
     st.info("👈 Please fill in your financial information in the sidebar and click 'Calculate FIRE Plan' to see your results.")
     
     # Show some example information
-    st.subheader("About FIRE")
+    st.subheader("About VIBE FIRE")
     st.markdown("""
-    **FIRE** stands for **Financial Independence, Retire Early**. It's a movement focused on extreme saving and investing to allow for early retirement.
+    **VIBE FIRE** - **Visualize Independence, Build Equity** - combines the power of FIRE (Financial Independence, Retire Early) with comprehensive financial visualization and planning tools.
     
     **Three Types of FIRE:**
     - **Lean FIRE**: Retiring with a smaller nest egg, typically requiring more frugal living
@@ -374,4 +374,10 @@ else:
     - **Fat FIRE**: Retiring with a larger portfolio to maintain a higher standard of living
     
     **The 4% Rule**: A common guideline suggesting you can safely withdraw 4% of your portfolio annually in retirement.
+    
+    **VIBE FIRE Features:**
+    - Interactive portfolio growth projections
+    - Monte Carlo simulations for risk analysis
+    - Scenario planning for different life paths
+    - Comprehensive FIRE target calculations
     """)
