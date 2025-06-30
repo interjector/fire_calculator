@@ -18,50 +18,6 @@ st.markdown("Financial Independence, Retire Early Calculator")
 # Sidebar for inputs
 st.sidebar.header("Your Financial Profile")
 
-# Theme toggle
-theme_choice = st.sidebar.radio(
-    "🎨 Theme",
-    ["Auto", "Light", "Dark"],
-    horizontal=True
-)
-
-# Apply theme styling
-if theme_choice == "Dark":
-    st.markdown("""
-    <style>
-    .stApp {
-        background-color: #0e1117;
-        color: #fafafa;
-    }
-    .stSidebar {
-        background-color: #262730;
-    }
-    .stMetric {
-        background-color: #262730;
-        border: 1px solid #454545;
-        border-radius: 5px;
-        padding: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-elif theme_choice == "Light":
-    st.markdown("""
-    <style>
-    .stApp {
-        background-color: #ffffff;
-        color: #262730;
-    }
-    .stSidebar {
-        background-color: #f0f2f6;
-    }
-    .stMetric {
-        background-color: #f0f2f6;
-        border: 1px solid #e6e9ef;
-        border-radius: 5px;
-        padding: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
 # Basic Information
 st.sidebar.subheader("Basic Information")
@@ -189,16 +145,33 @@ if 'calculator' in st.session_state:
         x=projections_df['age'],
         y=projections_df['portfolio_value'],
         mode='lines',
-        name='Total Portfolio',
-        line=dict(color='blue', width=3)
+        name='Your Portfolio Growth',
+        line=dict(color='blue', width=3),
+        showlegend=True
     ))
     
-    # Add all FIRE target lines
+    # Add all FIRE target lines with legend entries
     fire_colors = {
         'lean': '#28a745',    # Green
         'regular': '#dc3545', # Red  
         'fat': '#ffc107'      # Yellow/Gold
     }
+    
+    # Calculate years to reach each FIRE target
+    fire_achievements = {}
+    for target_type in ['lean', 'regular', 'fat']:
+        if target_type in st.session_state.fire_targets:
+            target_value = st.session_state.fire_targets[target_type]['target_portfolio']
+            # Find first age where portfolio exceeds target
+            achieved_rows = projections_df[projections_df['portfolio_value'] >= target_value]
+            if not achieved_rows.empty:
+                fire_age = achieved_rows.iloc[0]['age']
+                years_to_fire = fire_age - current_age
+                fire_achievements[target_type] = {
+                    'age': fire_age,
+                    'years': years_to_fire,
+                    'target': target_value
+                }
     
     for target_type, target_data in st.session_state.fire_targets.items():
         if target_type in ['lean', 'regular', 'fat']:  # Only show main FIRE types
@@ -208,20 +181,48 @@ if 'calculator' in st.session_state:
             line_width = 4 if target_type == fire_type else 2
             line_dash = "solid" if target_type == fire_type else "dash"
             
+            # Create legend label with time to FIRE
+            if target_type in fire_achievements:
+                years_to_fire = fire_achievements[target_type]['years']
+                fire_age = fire_achievements[target_type]['age']
+                legend_label = f"{target_data['name']} (${target_value:,.0f}) - {years_to_fire:.1f}y @ age {fire_age:.0f}"
+            else:
+                legend_label = f"{target_data['name']} (${target_value:,.0f}) - Not achieved in timeframe"
+            
+            # Add invisible trace for legend
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None],
+                mode='lines',
+                name=legend_label,
+                line=dict(color=fire_colors[target_type], width=line_width, dash=line_dash),
+                showlegend=True
+            ))
+            
+            # Add the actual horizontal line
             fig.add_hline(
                 y=target_value,
                 line_dash=line_dash,
                 line_color=fire_colors[target_type],
                 line_width=line_width,
-                annotation_text=f"{target_data['name']}: ${target_value:,.0f}",
-                annotation_position="right" if target_type != fire_type else "left"
+                annotation_text="",  # Remove annotation to avoid overlap with legend
             )
     
     fig.update_layout(
         title="Portfolio Growth Over Time with FIRE Targets",
         xaxis_title="Age",
         yaxis_title="Portfolio Value ($)",
-        hovermode='x unified'
+        hovermode='x unified',
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.01,
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.2)",
+            borderwidth=1
+        ),
+        margin=dict(r=150)  # Add right margin for legend
     )
     
     st.plotly_chart(fig, use_container_width=True)
