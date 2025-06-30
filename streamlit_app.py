@@ -63,23 +63,64 @@ large_expense = {}
 if has_large_expense:
     expense_type = st.sidebar.radio("Expense Type", ["Single Year", "Multi-Year"])
     
+    # Funding strategy selection
+    st.sidebar.write("**Funding Strategy:**")
+    funding_strategy = st.sidebar.radio(
+        "How to fund this expense:",
+        ["Reduce Contributions", "Portfolio Withdrawal", "Mixed Approach"],
+        help="Choose how you want to pay for this expense"
+    )
+    
     if expense_type == "Single Year":
         large_expense = {
             "target_age": st.sidebar.number_input("Age for Large Expense", min_value=current_age, max_value=100, value=current_age+10),
             "amount": st.sidebar.number_input("Large Expense Amount ($)", min_value=0, value=50000, step=1000),
-            "contribution_reduction": st.sidebar.number_input("Contribution Reduction During Expense ($)", min_value=0, max_value=annual_contribution, value=0, step=1000),
-            "type": "single"
+            "type": "single",
+            "funding_strategy": funding_strategy.lower().replace(" ", "_")
         }
+        
+        # Add specific controls based on funding strategy
+        if funding_strategy == "Mixed Approach":
+            max_contribution_reduction = st.sidebar.number_input(
+                "Max Annual Contribution Reduction ($)", 
+                min_value=0, 
+                max_value=annual_contribution, 
+                value=min(large_expense["amount"], annual_contribution), 
+                step=1000,
+                help="Reduce contributions up to this amount, then take remainder from portfolio"
+            )
+            large_expense["max_contribution_reduction"] = max_contribution_reduction
+        elif funding_strategy == "Reduce Contributions":
+            st.sidebar.info(f"💡 This will reduce your annual contribution by ${large_expense['amount']:,} in the expense year")
+            if large_expense["amount"] > annual_contribution:
+                st.sidebar.warning(f"⚠️ Expense (${large_expense['amount']:,}) exceeds annual contribution (${annual_contribution:,}). Excess will be taken from portfolio.")
     else:
         large_expense = {
             "start_age": st.sidebar.number_input("Start Age for Multi-Year Expense", min_value=current_age, max_value=100, value=current_age+10),
             "end_age": st.sidebar.number_input("End Age for Multi-Year Expense", min_value=current_age, max_value=100, value=current_age+12),
             "annual_amount": st.sidebar.number_input("Annual Expense Amount ($)", min_value=0, value=30000, step=1000),
-            "type": "multi"
+            "type": "multi",
+            "funding_strategy": funding_strategy.lower().replace(" ", "_")
         }
         # Ensure end_age >= start_age
         if large_expense["end_age"] < large_expense["start_age"]:
             large_expense["end_age"] = large_expense["start_age"]
+            
+        # Add specific controls based on funding strategy
+        if funding_strategy == "Mixed Approach":
+            max_annual_contribution_reduction = st.sidebar.number_input(
+                "Max Annual Contribution Reduction ($)", 
+                min_value=0, 
+                max_value=annual_contribution, 
+                value=min(large_expense["annual_amount"], annual_contribution), 
+                step=1000,
+                help="Reduce contributions up to this amount per year, then take remainder from portfolio"
+            )
+            large_expense["max_annual_contribution_reduction"] = max_annual_contribution_reduction
+        elif funding_strategy == "Reduce Contributions":
+            st.sidebar.info(f"💡 This will reduce your annual contribution by ${large_expense['annual_amount']:,} each year")
+            if large_expense["annual_amount"] > annual_contribution:
+                st.sidebar.warning(f"⚠️ Annual expense (${large_expense['annual_amount']:,}) exceeds annual contribution (${annual_contribution:,}). Excess will be taken from portfolio.")
 
 # Calculate button
 if st.sidebar.button("Calculate FIRE Plan", type="primary"):
@@ -687,8 +728,26 @@ if 'calculator' in st.session_state:
         display_cols.append('Social Security')
         column_names.append('Social Security')
     
-    # Add Large Expense column if available
-    if 'large_expense' in display_projections.columns:
+    # Add Large Expense columns if available - show funding breakdown
+    if 'total_expense' in display_projections.columns:
+        # Show contribution reduction if there are any
+        if display_projections['contribution_reduction'].sum() > 0:
+            display_projections['Contribution Reduction'] = display_projections['contribution_reduction'].apply(lambda x: f"${x:,.0f}" if x > 0 else "$0")
+            display_cols.append('Contribution Reduction')
+            column_names.append('Contribution Reduction')
+        
+        # Show portfolio withdrawal if there are any
+        if display_projections['portfolio_withdrawal'].sum() > 0:
+            display_projections['Portfolio Withdrawal'] = display_projections['portfolio_withdrawal'].apply(lambda x: f"${x:,.0f}" if x > 0 else "$0")
+            display_cols.append('Portfolio Withdrawal')
+            column_names.append('Portfolio Withdrawal')
+        
+        # Show total expense amount
+        display_projections['Total Large Expense'] = display_projections['total_expense'].apply(lambda x: f"${x:,.0f}" if x > 0 else "$0")
+        display_cols.append('Total Large Expense')
+        column_names.append('Total Large Expense')
+    elif 'large_expense' in display_projections.columns:
+        # Fallback for older data format
         display_projections['Large Expense'] = display_projections['large_expense'].apply(lambda x: f"${x:,.0f}" if x > 0 else "$0")
         display_cols.append('Large Expense')
         column_names.append('Large Expense')

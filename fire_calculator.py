@@ -151,24 +151,52 @@ class FIRECalculator:
             # Calculate large expense and contribution adjustments for this year
             large_expense_this_year = 0
             contribution_reduction = 0
+            portfolio_withdrawal_this_year = 0
             
             if self.large_expense:
                 expense_type = self.large_expense.get('type', 'single')
+                funding_strategy = self.large_expense.get('funding_strategy', 'portfolio_withdrawal')
+                
+                # Determine if this is an expense year and the expense amount
+                expense_amount_this_year = 0
                 
                 if expense_type == 'single':
                     # Single year expense
                     target_age = self.large_expense.get('target_age', 0)
                     if current_age == target_age:
-                        large_expense_this_year = self.large_expense.get('amount', 0)
-                    elif current_age < target_age:
-                        contribution_reduction = self.large_expense.get('contribution_reduction', 0)
+                        expense_amount_this_year = self.large_expense.get('amount', 0)
                         
                 elif expense_type == 'multi':
                     # Multi-year expense
                     start_age = self.large_expense.get('start_age', 0)
                     end_age = self.large_expense.get('end_age', 0)
                     if start_age <= current_age <= end_age:
-                        large_expense_this_year = self.large_expense.get('annual_amount', 0)
+                        expense_amount_this_year = self.large_expense.get('annual_amount', 0)
+                
+                # Apply funding strategy if there's an expense this year
+                if expense_amount_this_year > 0:
+                    if funding_strategy == 'reduce_contributions':
+                        # Reduce contributions first, portfolio withdrawal for remainder
+                        contribution_reduction = min(expense_amount_this_year, self.annual_contribution)
+                        portfolio_withdrawal_this_year = max(0, expense_amount_this_year - contribution_reduction)
+                        
+                    elif funding_strategy == 'portfolio_withdrawal':
+                        # Take entire amount from portfolio
+                        portfolio_withdrawal_this_year = expense_amount_this_year
+                        contribution_reduction = 0
+                        
+                    elif funding_strategy == 'mixed_approach':
+                        # Use mixed approach with user-defined limits
+                        if expense_type == 'single':
+                            max_contribution_reduction = self.large_expense.get('max_contribution_reduction', 0)
+                        else:
+                            max_contribution_reduction = self.large_expense.get('max_annual_contribution_reduction', 0)
+                        
+                        contribution_reduction = min(expense_amount_this_year, max_contribution_reduction, self.annual_contribution)
+                        portfolio_withdrawal_this_year = max(0, expense_amount_this_year - contribution_reduction)
+                    
+                    # For backward compatibility and display purposes
+                    large_expense_this_year = portfolio_withdrawal_this_year
             
             # Check if FIRE is achieved (against inflation-adjusted target)
             # Must have sufficient portfolio AND be able to sustain withdrawals
@@ -176,10 +204,10 @@ class FIRECalculator:
             
             # Additional check: if we have large expenses ongoing that reduce our effective available portfolio,
             # we should not consider FIRE achieved during those years
-            if self.large_expense and large_expense_this_year > 0:
-                # If we have a large expense this year, check if remaining portfolio after expense 
+            if self.large_expense and portfolio_withdrawal_this_year > 0:
+                # If we have a portfolio withdrawal this year, check if remaining portfolio after withdrawal 
                 # would still meet FIRE target for sustainable withdrawals
-                portfolio_after_expense = portfolio_value - large_expense_this_year
+                portfolio_after_expense = portfolio_value - portfolio_withdrawal_this_year
                 if portfolio_after_expense < inflation_adjusted_target:
                     fire_achieved = False
             
@@ -202,7 +230,10 @@ class FIRECalculator:
                 'annual_contribution': round(annual_contribution_this_year, 2),
                 'part_time_income': 0,  # Always 0 for regular calculations
                 'windfall': round(windfall_this_year, 2),
-                'large_expense': round(large_expense_this_year, 2),
+                'large_expense': round(large_expense_this_year, 2),  # Portfolio withdrawal portion
+                'contribution_reduction': round(contribution_reduction, 2),
+                'portfolio_withdrawal': round(portfolio_withdrawal_this_year, 2),
+                'total_expense': round(contribution_reduction + portfolio_withdrawal_this_year, 2),
                 'fire_achieved': fire_achieved,
                 'surplus_deficit': round(sustainable_withdrawal - net_spending_need, 2)
             })
@@ -220,8 +251,8 @@ class FIRECalculator:
                     # During accumulation phase: grow portfolio and add contributions
                     portfolio_value = portfolio_value * (1 + self.growth_rate) + annual_contribution_this_year
                 
-                # Add windfalls and subtract large expenses
-                portfolio_value += windfall_this_year - large_expense_this_year
+                # Add windfalls and subtract portfolio withdrawals for large expenses
+                portfolio_value += windfall_this_year - portfolio_withdrawal_this_year
         
         return projections
     
