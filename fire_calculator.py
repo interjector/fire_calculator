@@ -42,17 +42,34 @@ class FIRECalculator:
         
         # Validate large expense to prevent extreme scenarios
         if self.large_expense:
-            expense_amount = self.large_expense.get('amount', 0)
-            contribution_reduction = self.large_expense.get('contribution_reduction', 0)
+            expense_type = self.large_expense.get('type', 'single')
             
-            # Warn if expense is larger than current portfolio (could cause negative values)
-            if expense_amount > self.current_total_portfolio * 2:
-                print(f"Warning: Large expense (${expense_amount:,.0f}) is much larger than current portfolio (${self.current_total_portfolio:,.0f})")
-            
-            # Ensure contribution reduction doesn't exceed annual contribution
-            if contribution_reduction > self.annual_contribution:
-                print(f"Warning: Contribution reduction (${contribution_reduction:,.0f}) exceeds annual contribution (${self.annual_contribution:,.0f})")
-                self.large_expense['contribution_reduction'] = min(contribution_reduction, self.annual_contribution)
+            if expense_type == 'single':
+                expense_amount = self.large_expense.get('amount', 0)
+                contribution_reduction = self.large_expense.get('contribution_reduction', 0)
+                
+                # Warn if expense is larger than current portfolio (could cause negative values)
+                if expense_amount > self.current_total_portfolio * 2:
+                    print(f"Warning: Large expense (${expense_amount:,.0f}) is much larger than current portfolio (${self.current_total_portfolio:,.0f})")
+                
+                # Ensure contribution reduction doesn't exceed annual contribution
+                if contribution_reduction > self.annual_contribution:
+                    print(f"Warning: Contribution reduction (${contribution_reduction:,.0f}) exceeds annual contribution (${self.annual_contribution:,.0f})")
+                    self.large_expense['contribution_reduction'] = min(contribution_reduction, self.annual_contribution)
+                    
+            elif expense_type == 'multi':
+                annual_amount = self.large_expense.get('annual_amount', 0)
+                start_age = self.large_expense.get('start_age', 0)
+                end_age = self.large_expense.get('end_age', 0)
+                total_expense = annual_amount * (end_age - start_age + 1)
+                
+                # Warn if total multi-year expense is excessive
+                if total_expense > self.current_total_portfolio * 3:
+                    print(f"Warning: Multi-year expense total (${total_expense:,.0f}) is much larger than current portfolio (${self.current_total_portfolio:,.0f})")
+                
+                # Warn if annual amount exceeds annual contribution
+                if annual_amount > self.annual_contribution:
+                    print(f"Warning: Annual expense amount (${annual_amount:,.0f}) exceeds annual contribution (${self.annual_contribution:,.0f})")
         
     @property
     def current_total_portfolio(self) -> float:
@@ -145,21 +162,34 @@ class FIRECalculator:
             # Determine contribution for this year (stop contributions once FIRE is achieved OR desired retirement age is reached)
             reached_desired_retirement = self.desired_retirement_age and current_age >= self.desired_retirement_age
             
-            # Check for large expense impact on contributions (only in years leading up to expense)
-            base_contribution = self.annual_contribution
-            if self.large_expense and current_age < self.large_expense.get('target_age', 999):
-                reduction_amount = self.large_expense.get('contribution_reduction', 0)
-                base_contribution = max(0, self.annual_contribution - reduction_amount)  # Ensure non-negative
+            # Calculate large expense and contribution adjustments for this year
+            large_expense_this_year = 0
+            contribution_reduction = 0
             
+            if self.large_expense:
+                expense_type = self.large_expense.get('type', 'single')
+                
+                if expense_type == 'single':
+                    # Single year expense
+                    target_age = self.large_expense.get('target_age', 0)
+                    if current_age == target_age:
+                        large_expense_this_year = self.large_expense.get('amount', 0)
+                    elif current_age < target_age:
+                        contribution_reduction = self.large_expense.get('contribution_reduction', 0)
+                        
+                elif expense_type == 'multi':
+                    # Multi-year expense
+                    start_age = self.large_expense.get('start_age', 0)
+                    end_age = self.large_expense.get('end_age', 0)
+                    if start_age <= current_age <= end_age:
+                        large_expense_this_year = self.large_expense.get('annual_amount', 0)
+            
+            # Calculate final contribution for this year
+            base_contribution = max(0, self.annual_contribution - contribution_reduction)
             annual_contribution_this_year = 0 if (fire_achieved or reached_desired_retirement) else base_contribution
             
             # Check for windfalls this year
             windfall_this_year = sum(w['amount'] for w in self.windfalls if w.get('age') == current_age)
-            
-            # Check for large expense this year
-            large_expense_this_year = 0
-            if self.large_expense and current_age == self.large_expense.get('target_age', 0):
-                large_expense_this_year = self.large_expense.get('amount', 0)
             
             projections.append({
                 'year': year,

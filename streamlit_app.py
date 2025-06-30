@@ -61,11 +61,25 @@ st.sidebar.subheader("Large Expense")
 has_large_expense = st.sidebar.checkbox("Include Large Expense")
 large_expense = {}
 if has_large_expense:
-    large_expense = {
-        "target_age": st.sidebar.number_input("Age for Large Expense", min_value=current_age, max_value=100, value=current_age+10),
-        "amount": st.sidebar.number_input("Large Expense Amount ($)", min_value=0, value=50000, step=1000),
-        "contribution_reduction": st.sidebar.number_input("Contribution Reduction During Expense ($)", min_value=0, max_value=annual_contribution, value=0, step=1000)
-    }
+    expense_type = st.sidebar.radio("Expense Type", ["Single Year", "Multi-Year"])
+    
+    if expense_type == "Single Year":
+        large_expense = {
+            "target_age": st.sidebar.number_input("Age for Large Expense", min_value=current_age, max_value=100, value=current_age+10),
+            "amount": st.sidebar.number_input("Large Expense Amount ($)", min_value=0, value=50000, step=1000),
+            "contribution_reduction": st.sidebar.number_input("Contribution Reduction During Expense ($)", min_value=0, max_value=annual_contribution, value=0, step=1000),
+            "type": "single"
+        }
+    else:
+        large_expense = {
+            "start_age": st.sidebar.number_input("Start Age for Multi-Year Expense", min_value=current_age, max_value=100, value=current_age+10),
+            "end_age": st.sidebar.number_input("End Age for Multi-Year Expense", min_value=current_age, max_value=100, value=current_age+12),
+            "annual_amount": st.sidebar.number_input("Annual Expense Amount ($)", min_value=0, value=30000, step=1000),
+            "type": "multi"
+        }
+        # Ensure end_age >= start_age
+        if large_expense["end_age"] < large_expense["start_age"]:
+            large_expense["end_age"] = large_expense["start_age"]
 
 # Calculate button
 if st.sidebar.button("Calculate FIRE Plan", type="primary"):
@@ -598,6 +612,12 @@ if 'calculator' in st.session_state:
         display_projections['Social Security'] = display_projections['social_security_income'].apply(lambda x: f"${x:,.0f}")
         display_cols.append('Social Security')
         column_names.append('Social Security')
+    
+    # Add Large Expense column if available
+    if 'large_expense' in display_projections.columns:
+        display_projections['Large Expense'] = display_projections['large_expense'].apply(lambda x: f"${x:,.0f}" if x > 0 else "$0")
+        display_cols.append('Large Expense')
+        column_names.append('Large Expense')
     
     # Add required withdrawal column - only show during retirement years
     def calculate_required_withdrawal(row):
