@@ -278,20 +278,87 @@ if 'calculator' in st.session_state:
             # Display results
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Success Rate", f"{monte_carlo_results['success_rate']:.1%}")
+                st.metric("Success Rate", f"{monte_carlo_results['success_rate']:.1f}%")
             with col2:
-                st.metric("Median Final Value", f"${monte_carlo_results['median_final_value']:,.0f}")
+                st.metric("Median Final Value", f"${monte_carlo_results['final_values']['median']:,.0f}")
             with col3:
-                st.metric("10th Percentile", f"${monte_carlo_results['percentile_10']:,.0f}")
+                st.metric("Mean Final Value", f"${monte_carlo_results['final_values']['mean']:,.0f}")
             
-            # Create histogram
-            fig_hist = px.histogram(
-                x=monte_carlo_results['final_values'],
-                nbins=50,
-                title="Distribution of Final Portfolio Values",
-                labels={'x': 'Final Portfolio Value ($)', 'y': 'Frequency'}
+            # Additional metrics
+            col4, col5 = st.columns(2)
+            with col4:
+                st.metric("Target Portfolio", f"${monte_carlo_results['target_portfolio']:,.0f}")
+            with col5:
+                st.metric("Standard Deviation", f"${monte_carlo_results['final_values']['std']:,.0f}")
+            
+            # Create percentile chart
+            fig_mc = go.Figure()
+            years_range = list(range(monte_carlo_results['years'] + 1))
+            
+            # Add percentile bands
+            fig_mc.add_trace(go.Scatter(
+                x=years_range, 
+                y=monte_carlo_results['percentiles']['p90'],
+                mode='lines',
+                name='90th Percentile',
+                line=dict(color='rgba(0,100,80,0.3)'),
+                showlegend=True
+            ))
+            
+            fig_mc.add_trace(go.Scatter(
+                x=years_range,
+                y=monte_carlo_results['percentiles']['p75'],
+                mode='lines',
+                name='75th Percentile',
+                line=dict(color='rgba(0,100,80,0.5)'),
+                fill='tonexty',
+                showlegend=True
+            ))
+            
+            fig_mc.add_trace(go.Scatter(
+                x=years_range,
+                y=monte_carlo_results['percentiles']['p50'],
+                mode='lines',
+                name='Median (50th)',
+                line=dict(color='blue', width=3),
+                showlegend=True
+            ))
+            
+            fig_mc.add_trace(go.Scatter(
+                x=years_range,
+                y=monte_carlo_results['percentiles']['p25'],
+                mode='lines',
+                name='25th Percentile',
+                line=dict(color='rgba(100,0,0,0.5)'),
+                fill='tonexty',
+                showlegend=True
+            ))
+            
+            fig_mc.add_trace(go.Scatter(
+                x=years_range,
+                y=monte_carlo_results['percentiles']['p10'],
+                mode='lines',
+                name='10th Percentile',
+                line=dict(color='rgba(100,0,0,0.3)'),
+                showlegend=True
+            ))
+            
+            # Add target line
+            fig_mc.add_hline(
+                y=monte_carlo_results['target_portfolio'],
+                line_dash="dash",
+                line_color="red",
+                annotation_text=f"FIRE Target: ${monte_carlo_results['target_portfolio']:,.0f}"
             )
-            st.plotly_chart(fig_hist, use_container_width=True)
+            
+            fig_mc.update_layout(
+                title="Monte Carlo Simulation - Portfolio Growth Percentiles",
+                xaxis_title="Years",
+                yaxis_title="Portfolio Value ($)",
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_mc, use_container_width=True)
 
 else:
     st.info("👈 Please fill in your financial information in the sidebar and click 'Calculate FIRE Plan' to see your results.")
