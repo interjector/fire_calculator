@@ -280,6 +280,12 @@ if 'calculator' in st.session_state:
         display_cols.append(income_label)
         column_names.append(income_label)
     
+    # Add Social Security income column if available
+    if 'social_security_income' in display_projections.columns:
+        display_projections['Social Security'] = display_projections['social_security_income'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append('Social Security')
+        column_names.append('Social Security')
+    
     # Add required withdrawal column - only show during retirement years
     def calculate_required_withdrawal(row):
         # Only show withdrawal if person has reached retirement age or achieved FIRE
