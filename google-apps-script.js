@@ -39,7 +39,7 @@ function doPost(e) {
     }
     
     // Get user agent from headers for additional context
-    const userAgent = e.parameter.HTTP_USER_AGENT || 'Unknown';
+    const userAgent = (e.parameter && e.parameter.HTTP_USER_AGENT) || 'Unknown';
     
     // Append the feedback data
     sheet.appendRow([

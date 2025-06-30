@@ -1122,7 +1122,15 @@ def submit_feedback(feedback_text, feedback_type, email=None):
             if response.status_code == 200:
                 return True, "Feedback submitted successfully!"
             else:
-                return False, "Failed to submit feedback. Please try again."
+                # Enhanced error reporting for debugging
+                error_msg = f"Webhook returned status {response.status_code}"
+                try:
+                    response_text = response.text
+                    if response_text:
+                        error_msg += f": {response_text}"
+                except:
+                    pass
+                return False, f"Failed to submit feedback. {error_msg}"
         except Exception as e:
             return False, f"Error submitting feedback: {str(e)}"
     
