@@ -4,6 +4,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 from fire_calculator import FIRECalculator
 import numpy as np
+import requests
+import json
+import time
+from datetime import datetime
 
 st.set_page_config(
     page_title="VIBE FIRE Calculator",
@@ -1079,3 +1083,136 @@ else:
     - Scenario planning for different life paths
     - Comprehensive FIRE target calculations
     """)
+
+# Feedback Section
+st.markdown("---")
+st.subheader("📝 Share Your Feedback")
+
+def simple_bot_check():
+    """Simple arithmetic bot protection"""
+    if 'bot_check_answer' not in st.session_state:
+        import random
+        a = random.randint(1, 10)
+        b = random.randint(1, 10)
+        st.session_state.bot_check_question = f"{a} + {b}"
+        st.session_state.bot_check_answer = a + b
+    
+    return st.session_state.bot_check_question, st.session_state.bot_check_answer
+
+def submit_feedback(feedback_text, feedback_type, email=None):
+    """Submit feedback via webhook or email service"""
+    timestamp = datetime.now().isoformat()
+    
+    # Prepare feedback data
+    feedback_data = {
+        "timestamp": timestamp,
+        "type": feedback_type,
+        "feedback": feedback_text,
+        "email": email if email else "anonymous",
+        "app": "VIBE FIRE Calculator"
+    }
+    
+    # Option 1: Google Sheets via webhook (recommended)
+    # Replace with your Google Apps Script webhook URL
+    webhook_url = st.secrets.get("FEEDBACK_WEBHOOK_URL", "")
+    
+    if webhook_url:
+        try:
+            response = requests.post(webhook_url, json=feedback_data, timeout=10)
+            if response.status_code == 200:
+                return True, "Feedback submitted successfully!"
+            else:
+                return False, "Failed to submit feedback. Please try again."
+        except Exception as e:
+            return False, f"Error submitting feedback: {str(e)}"
+    
+    # Option 2: Fallback - save to session state (for development)
+    if 'feedback_log' not in st.session_state:
+        st.session_state.feedback_log = []
+    
+    st.session_state.feedback_log.append(feedback_data)
+    return True, "Feedback received! (Development mode)"
+
+# Feedback form
+with st.expander("💡 Help us improve VIBE FIRE", expanded=False):
+    st.write("Your feedback helps us make the calculator better for everyone!")
+    
+    feedback_type = st.selectbox(
+        "What type of feedback?",
+        ["Feature Request", "Bug Report", "General Feedback", "UI/UX Suggestion"]
+    )
+    
+    feedback_text = st.text_area(
+        "Your feedback:",
+        placeholder="Tell us what you think or what could be improved...",
+        height=100
+    )
+    
+    email = st.text_input(
+        "Email (optional):",
+        placeholder="your.email@example.com",
+        help="Leave blank to submit anonymously"
+    )
+    
+    # Simple bot protection
+    question, correct_answer = simple_bot_check()
+    user_answer = st.number_input(
+        f"Quick check: What is {question}?",
+        min_value=0,
+        max_value=100,
+        value=0,
+        help="Simple math to prevent spam"
+    )
+    
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        submit_button = st.button("Submit Feedback", type="primary")
+    
+    with col2:
+        if submit_button:
+            if not feedback_text.strip():
+                st.error("Please enter some feedback before submitting.")
+            elif user_answer != correct_answer:
+                st.error(f"Incorrect answer to {question}. Please try again.")
+            else:
+                success, message = submit_feedback(feedback_text, feedback_type, email)
+                if success:
+                    st.success(message)
+                    # Reset form
+                    del st.session_state.bot_check_answer
+                    st.rerun()
+                else:
+                    st.error(message)
+
+# Setup instructions for webhook (only show in development)
+if not st.secrets.get("FEEDBACK_WEBHOOK_URL") and st.secrets.get("DEBUG_MODE", False):
+    with st.expander("🔧 Setup Instructions (Admin Only)", expanded=False):
+        st.code("""
+# Google Apps Script Setup:
+# 1. Go to script.google.com
+# 2. Create new script with this code:
+
+function doPost(e) {
+  var sheet = SpreadsheetApp.openById('YOUR_SHEET_ID').getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  
+  sheet.appendRow([
+    data.timestamp,
+    data.type,
+    data.feedback,
+    data.email,
+    data.app
+  ]);
+  
+  return ContentService.createTextOutput('Success');
+}
+
+# 3. Deploy as web app (execute as me, access to anyone)
+# 4. Add webhook URL to Streamlit secrets as FEEDBACK_WEBHOOK_URL
+        """)
+        
+        if 'feedback_log' in st.session_state and st.session_state.feedback_log:
+            st.write("**Recent Feedback (Dev Mode):**")
+            for fb in st.session_state.feedback_log[-5:]:
+                st.json(fb)
