@@ -40,6 +40,20 @@ class FIRECalculator:
         self.windfalls = windfalls or []  # List of {'year': int, 'amount': float}
         self.large_expense = large_expense or {}  # {'year': int, 'amount': float, 'contribution_reduction': float}
         
+        # Validate large expense to prevent extreme scenarios
+        if self.large_expense:
+            expense_amount = self.large_expense.get('amount', 0)
+            contribution_reduction = self.large_expense.get('contribution_reduction', 0)
+            
+            # Warn if expense is larger than current portfolio (could cause negative values)
+            if expense_amount > self.current_total_portfolio * 2:
+                print(f"Warning: Large expense (${expense_amount:,.0f}) is much larger than current portfolio (${self.current_total_portfolio:,.0f})")
+            
+            # Ensure contribution reduction doesn't exceed annual contribution
+            if contribution_reduction > self.annual_contribution:
+                print(f"Warning: Contribution reduction (${contribution_reduction:,.0f}) exceeds annual contribution (${self.annual_contribution:,.0f})")
+                self.large_expense['contribution_reduction'] = min(contribution_reduction, self.annual_contribution)
+        
     @property
     def current_total_portfolio(self) -> float:
         return self.current_portfolio_taxable + self.current_portfolio_tax_deferred
@@ -131,11 +145,11 @@ class FIRECalculator:
             # Determine contribution for this year (stop contributions once FIRE is achieved OR desired retirement age is reached)
             reached_desired_retirement = self.desired_retirement_age and current_age >= self.desired_retirement_age
             
-            # Check for large expense impact on contributions
+            # Check for large expense impact on contributions (only in years leading up to expense)
             base_contribution = self.annual_contribution
-            if self.large_expense and current_age <= self.large_expense.get('target_age', 999):
-                reduction = self.large_expense.get('contribution_reduction', 0)
-                base_contribution = self.annual_contribution * (1 - reduction)
+            if self.large_expense and current_age < self.large_expense.get('target_age', 999):
+                reduction_amount = self.large_expense.get('contribution_reduction', 0)
+                base_contribution = max(0, self.annual_contribution - reduction_amount)  # Ensure non-negative
             
             annual_contribution_this_year = 0 if (fire_achieved or reached_desired_retirement) else base_contribution
             

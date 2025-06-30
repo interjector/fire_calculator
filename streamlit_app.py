@@ -64,7 +64,7 @@ if has_large_expense:
     large_expense = {
         "target_age": st.sidebar.number_input("Age for Large Expense", min_value=current_age, max_value=100, value=current_age+10),
         "amount": st.sidebar.number_input("Large Expense Amount ($)", min_value=0, value=50000, step=1000),
-        "contribution_reduction": st.sidebar.number_input("Contribution Reduction During Expense ($)", min_value=0, value=0, step=1000)
+        "contribution_reduction": st.sidebar.number_input("Contribution Reduction During Expense ($)", min_value=0, max_value=annual_contribution, value=0, step=1000)
     }
 
 # Calculate button
