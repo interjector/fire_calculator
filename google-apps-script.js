@@ -16,8 +16,12 @@ const SHEET_ID = 'YOUR_SHEET_ID_HERE';
 
 function doPost(e) {
   try {
+    // Log the incoming request for debugging
+    console.log('Received POST request:', e);
+    
     // Parse the incoming data
     const data = JSON.parse(e.postData.contents);
+    console.log('Parsed data:', data);
     
     // Open the spreadsheet
     const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
@@ -47,6 +51,8 @@ function doPost(e) {
       userAgent
     ]);
     
+    console.log('Successfully added feedback to sheet');
+    
     // Optional: Send email notification for critical feedback
     if (data.type === 'Bug Report') {
       // Uncomment and configure if you want email notifications
@@ -57,17 +63,18 @@ function doPost(e) {
       // });
     }
     
+    // Return success with proper headers
     return ContentService
-      .createTextOutput('Success')
-      .setMimeType(ContentService.MimeType.TEXT);
+      .createTextOutput(JSON.stringify({status: 'success', message: 'Feedback received'}))
+      .setMimeType(ContentService.MimeType.JSON);
       
   } catch (error) {
     // Log error for debugging
     console.error('Error processing feedback:', error);
     
     return ContentService
-      .createTextOutput('Error: ' + error.toString())
-      .setMimeType(ContentService.MimeType.TEXT);
+      .createTextOutput(JSON.stringify({status: 'error', message: error.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
