@@ -18,6 +18,51 @@ st.markdown("Financial Independence, Retire Early Calculator")
 # Sidebar for inputs
 st.sidebar.header("Your Financial Profile")
 
+# Theme toggle
+theme_choice = st.sidebar.radio(
+    "🎨 Theme",
+    ["Auto", "Light", "Dark"],
+    horizontal=True
+)
+
+# Apply theme styling
+if theme_choice == "Dark":
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0e1117;
+        color: #fafafa;
+    }
+    .stSidebar {
+        background-color: #262730;
+    }
+    .stMetric {
+        background-color: #262730;
+        border: 1px solid #454545;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+elif theme_choice == "Light":
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #ffffff;
+        color: #262730;
+    }
+    .stSidebar {
+        background-color: #f0f2f6;
+    }
+    .stMetric {
+        background-color: #f0f2f6;
+        border: 1px solid #e6e9ef;
+        border-radius: 5px;
+        padding: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # Basic Information
 st.sidebar.subheader("Basic Information")
 current_age = st.sidebar.number_input("Current Age", min_value=18, max_value=100, value=30)
@@ -99,6 +144,16 @@ if st.sidebar.button("Calculate FIRE Plan", type="primary"):
 
 # Display results if available
 if 'calculator' in st.session_state:
+    # Retirement readiness alert
+    if desired_retirement_age is not None:
+        if st.session_state.fire_age <= desired_retirement_age:
+            st.success(f"🎯 **On Track!** You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}, which is {desired_retirement_age - st.session_state.fire_age:.1f} years before your target retirement age of {desired_retirement_age}.")
+        else:
+            years_behind = st.session_state.fire_age - desired_retirement_age
+            st.error(f"⚠️ **Behind Target!** You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}, which is {years_behind:.1f} years after your target retirement age of {desired_retirement_age}. Consider increasing contributions or adjusting your retirement timeline.")
+    else:
+        st.info(f"📊 You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}. Set a desired retirement age in the sidebar to see if you're on track!")
+    
     # Main results
     col1, col2, col3, col4 = st.columns(4)
     
@@ -138,16 +193,32 @@ if 'calculator' in st.session_state:
         line=dict(color='blue', width=3)
     ))
     
-    # Add FIRE target line
-    fig.add_hline(
-        y=st.session_state.target_portfolio,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"FIRE Target: ${st.session_state.target_portfolio:,.0f}"
-    )
+    # Add all FIRE target lines
+    fire_colors = {
+        'lean': '#28a745',    # Green
+        'regular': '#dc3545', # Red  
+        'fat': '#ffc107'      # Yellow/Gold
+    }
+    
+    for target_type, target_data in st.session_state.fire_targets.items():
+        if target_type in ['lean', 'regular', 'fat']:  # Only show main FIRE types
+            target_value = target_data['target_portfolio']
+            
+            # Bold the selected FIRE type
+            line_width = 4 if target_type == fire_type else 2
+            line_dash = "solid" if target_type == fire_type else "dash"
+            
+            fig.add_hline(
+                y=target_value,
+                line_dash=line_dash,
+                line_color=fire_colors[target_type],
+                line_width=line_width,
+                annotation_text=f"{target_data['name']}: ${target_value:,.0f}",
+                annotation_position="right" if target_type != fire_type else "left"
+            )
     
     fig.update_layout(
-        title="Portfolio Growth Over Time",
+        title="Portfolio Growth Over Time with FIRE Targets",
         xaxis_title="Age",
         yaxis_title="Portfolio Value ($)",
         hovermode='x unified'
@@ -162,7 +233,12 @@ if 'calculator' in st.session_state:
     if 'current_scenario' in st.session_state:
         scenario_data = st.session_state.current_scenario
         display_data = pd.DataFrame(scenario_data['data'])
-        scenario_title = "No Contributions Scenario" if scenario_data['type'] == 'no_contributions' else "Part-Time Work Scenario"
+        scenario_titles = {
+            'no_contributions': "No Contributions Scenario",
+            'part_time': "Part-Time Work Scenario", 
+            'barista_fire': "Barista FIRE Scenario"
+        }
+        scenario_title = scenario_titles.get(scenario_data['type'], "Unknown Scenario")
         st.write(f"**Currently showing: {scenario_title}**")
     else:
         display_data = projections_df.copy()
@@ -184,15 +260,37 @@ if 'calculator' in st.session_state:
         display_cols.append('Annual Contribution')
         column_names.append('Annual Contribution')
     
-    # Add part-time income column if available
+    # Add part-time income column if available (for part-time and barista scenarios)
     if 'part_time_income' in display_projections.columns:
-        display_projections['Part-Time Income'] = display_projections['part_time_income'].apply(lambda x: f"${x:,.0f}")
-        display_cols.append('Part-Time Income')
-        column_names.append('Part-Time Income')
+        income_label = "Barista Income" if 'current_scenario' in st.session_state and st.session_state.current_scenario['type'] == 'barista_fire' else "Part-Time Income"
+        display_projections[income_label] = display_projections['part_time_income'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append(income_label)
+        column_names.append(income_label)
     
-    # Add FIRE achieved column
-    display_cols.append('fire_achieved')
-    column_names.append('FIRE Achieved')
+    # Add required withdrawal column
+    if 'net_withdrawal_needed' in display_projections.columns:
+        # For scenarios with part-time income, show net withdrawal needed
+        display_projections['Required Withdrawal'] = display_projections['net_withdrawal_needed'].apply(lambda x: f"${x:,.0f}")
+    elif 'net_spending_need' in display_projections.columns:
+        # For other scenarios, show net spending need (after social security)
+        display_projections['Required Withdrawal'] = display_projections['net_spending_need'].apply(lambda x: f"${x:,.0f}")
+    else:
+        # Fallback: calculate required withdrawal as spending minus income sources
+        display_projections['Required Withdrawal'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
+    
+    display_cols.append('Required Withdrawal')
+    column_names.append('Required Withdrawal')
+    
+    # Add FIRE achieved column with emoji styling
+    def format_fire_achieved(achieved):
+        if achieved:
+            return "✅🔥"  # Checkmark + fire emoji
+        else:
+            return "⏳"    # Hourglass for pending
+    
+    display_projections['FIRE Status'] = display_projections['fire_achieved'].apply(format_fire_achieved)
+    display_cols.append('FIRE Status')
+    column_names.append('FIRE Status')
     
     # Select and rename columns
     display_projections = display_projections[display_cols]
@@ -211,7 +309,7 @@ if 'calculator' in st.session_state:
     
     scenario_type = st.selectbox(
         "Select Scenario",
-        ["No Additional Contributions", "Part-Time Work"]
+        ["No Additional Contributions", "Part-Time Work", "Barista FIRE"]
     )
     
     if scenario_type == "No Additional Contributions":
@@ -403,6 +501,121 @@ if 'calculator' in st.session_state:
             )
             
             st.plotly_chart(fig_scenario, use_container_width=True)
+    
+    elif scenario_type == "Barista FIRE":
+        col1, col2 = st.columns(2)
+        with col1:
+            barista_annual_income = st.number_input("Annual Barista Job Income ($)", min_value=0, value=30000, step=1000)
+            barista_start_age = st.number_input("Barista FIRE Start Age", min_value=current_age, max_value=100, value=50)
+        
+        with col2:
+            barista_end_age = st.number_input("Healthcare Coverage End Age", min_value=barista_start_age, max_value=100, value=65)
+            barista_spending = st.number_input("Annual Spending During Barista Period ($)", min_value=0, value=int(expected_annual_spending * 0.9), step=1000)
+        
+        if st.button("Run Barista FIRE Scenario"):
+            # Barista FIRE is essentially part-time work with different framing
+            barista_projections = st.session_state.calculator.generate_part_time_projections(
+                barista_spending, barista_annual_income, barista_start_age, barista_end_age,
+                life_expectancy - current_age
+            )
+            
+            # Store scenario data for table display
+            st.session_state.current_scenario = {
+                'type': 'barista_fire',
+                'data': barista_projections
+            }
+            
+            # Create comparison chart
+            fig_scenario = go.Figure()
+            
+            fig_scenario.add_trace(go.Scatter(
+                x=projections_df['age'],
+                y=projections_df['portfolio_value'],
+                mode='lines',
+                name='Regular Plan',
+                line=dict(color='blue', width=3)
+            ))
+            
+            barista_df = pd.DataFrame(barista_projections)
+            fig_scenario.add_trace(go.Scatter(
+                x=barista_df['age'],
+                y=barista_df['portfolio_value'],
+                mode='lines',
+                name='Barista FIRE Plan',
+                line=dict(color='purple', width=3, dash='dash')
+            ))
+            
+            # Add FIRE target line
+            fig_scenario.add_hline(
+                y=st.session_state.target_portfolio,
+                line_dash="dot",
+                line_color="orange",
+                annotation_text=f"FIRE Target: ${st.session_state.target_portfolio:,.0f}"
+            )
+            
+            # Highlight FIRE achievement points
+            fire_achieved_regular = projections_df[projections_df['fire_achieved'] == True]
+            fire_achieved_barista = barista_df[barista_df['fire_achieved'] == True]
+            
+            if not fire_achieved_regular.empty:
+                first_fire_regular = fire_achieved_regular.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_regular['age']], 
+                    y=[first_fire_regular['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='blue', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_regular["age"]:.0f} (Regular Plan)',
+                    showlegend=True
+                )
+            
+            if not fire_achieved_barista.empty:
+                first_fire_barista = fire_achieved_barista.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_barista['age']], 
+                    y=[first_fire_barista['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='purple', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_barista["age"]:.0f} (Barista FIRE)',
+                    showlegend=True
+                )
+                
+                # Show comparison of FIRE achievement
+                if not fire_achieved_regular.empty:
+                    age_diff = first_fire_barista['age'] - first_fire_regular['age']
+                    if age_diff < 0:
+                        st.success(f"🎉 Barista FIRE plan achieves FIRE {abs(age_diff):.1f} years earlier at age {first_fire_barista['age']:.0f}!")
+                    elif age_diff > 0:
+                        st.info(f"📊 Barista FIRE plan achieves FIRE {age_diff:.1f} years later at age {first_fire_barista['age']:.0f}")
+                    else:
+                        st.info(f"📊 Both plans achieve FIRE at the same age: {first_fire_barista['age']:.0f}")
+                else:
+                    st.success(f"🎉 FIRE achieved at age {first_fire_barista['age']:.0f} with Barista FIRE plan!")
+            else:
+                st.warning("⚠️ FIRE not achieved within the projected timeframe with Barista FIRE plan.")
+            
+            # Show barista work period visualization
+            barista_periods = barista_df[barista_df['is_part_time'] == True]
+            if not barista_periods.empty:
+                fig_scenario.add_vrect(
+                    x0=barista_periods['age'].min(),
+                    x1=barista_periods['age'].max(),
+                    fillcolor="rgba(128,0,128,0.1)",
+                    layer="below",
+                    line_width=0,
+                    annotation_text="Barista FIRE Period",
+                    annotation_position="top left"
+                )
+            
+            fig_scenario.update_layout(
+                title="Scenario Comparison: Regular vs Barista FIRE",
+                xaxis_title="Age",
+                yaxis_title="Portfolio Value ($)",
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_scenario, use_container_width=True)
+            
+            st.info("💡 **Barista FIRE**: Work a lower-stress job that provides healthcare benefits while your portfolio continues growing until you reach full FIRE.")
     
     # Monte Carlo Simulation
     st.subheader("Monte Carlo Simulation")
