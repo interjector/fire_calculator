@@ -34,7 +34,7 @@ inflation_rate = st.sidebar.slider("Expected Inflation Rate (%)", min_value=0.0,
 withdrawal_rate = st.sidebar.slider("Safe Withdrawal Rate (%)", min_value=2.0, max_value=8.0, value=4.0, step=0.1) / 100
 
 # FIRE Type
-fire_type = st.sidebar.selectbox("FIRE Type", ["lean", "regular", "fat"])
+fire_type = st.sidebar.selectbox("FIRE Type", ["lean", "regular", "fat"], index=1)
 
 # Social Security
 st.sidebar.subheader("Social Security")
@@ -227,122 +227,7 @@ if 'calculator' in st.session_state:
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # Detailed Projections Table
-    st.subheader("Detailed Yearly Projections")
-    
-    # Use scenario data if available, otherwise use original projections
-    if 'current_scenario' in st.session_state:
-        scenario_data = st.session_state.current_scenario
-        display_data = pd.DataFrame(scenario_data['data'])
-        scenario_titles = {
-            'no_contributions': "No Contributions Scenario",
-            'part_time': "Part-Time Work Scenario", 
-            'barista_fire': "Barista FIRE Scenario"
-        }
-        scenario_title = scenario_titles.get(scenario_data['type'], "Unknown Scenario")
-        st.write(f"**Currently showing: {scenario_title}**")
-    else:
-        display_data = projections_df.copy()
-        st.write("**Currently showing: Original Plan**")
-    
-    # Format the projections for display
-    display_projections = display_data.copy()
-    display_projections['Total Portfolio'] = display_projections['portfolio_value'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Target Portfolio'] = display_projections['target_portfolio'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Annual Spending'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
-    
-    # Base columns to display
-    display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending']
-    column_names = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending']
-    
-    # Add contribution column if available - show $0 during retirement years
-    if 'annual_contribution' in display_projections.columns:
-        def format_contribution(row):
-            current_person_age = row['age']
-            contribution = row['annual_contribution']
-            
-            # If person has reached desired retirement age or achieved FIRE, no more contributions
-            if desired_retirement_age is not None and current_person_age >= desired_retirement_age:
-                return "$0"
-            elif row.get('fire_achieved', False):
-                return "$0"
-            else:
-                return f"${contribution:,.0f}"
-        
-        display_projections['Annual Contribution'] = display_projections.apply(format_contribution, axis=1)
-        display_cols.append('Annual Contribution')
-        column_names.append('Annual Contribution')
-    
-    # Add part-time income column if available (for part-time and barista scenarios)
-    if 'part_time_income' in display_projections.columns:
-        income_label = "Barista Income" if 'current_scenario' in st.session_state and st.session_state.current_scenario['type'] == 'barista_fire' else "Part-Time Income"
-        display_projections[income_label] = display_projections['part_time_income'].apply(lambda x: f"${x:,.0f}")
-        display_cols.append(income_label)
-        column_names.append(income_label)
-    
-    # Add Social Security income column if available
-    if 'social_security_income' in display_projections.columns:
-        display_projections['Social Security'] = display_projections['social_security_income'].apply(lambda x: f"${x:,.0f}")
-        display_cols.append('Social Security')
-        column_names.append('Social Security')
-    
-    # Add required withdrawal column - only show during retirement years
-    def calculate_required_withdrawal(row):
-        # Only show withdrawal if person has reached retirement age or achieved FIRE
-        current_person_age = row['age']
-        has_achieved_fire = row.get('fire_achieved', False)
-        
-        # Check if in retirement (either reached desired retirement age or achieved FIRE)
-        is_retired = False
-        if desired_retirement_age is not None:
-            is_retired = current_person_age >= desired_retirement_age
-        else:
-            is_retired = has_achieved_fire
-            
-        if not is_retired:
-            return "$0"  # No withdrawal needed during working years
-            
-        # Calculate withdrawal amount based on available columns
-        if 'net_withdrawal_needed' in row:
-            # For scenarios with part-time income
-            withdrawal_amount = row['net_withdrawal_needed']
-        elif 'net_spending_need' in row:
-            # For other scenarios (after social security)
-            withdrawal_amount = row['net_spending_need']
-        else:
-            # Fallback: use inflation adjusted spending
-            withdrawal_amount = row['inflation_adjusted_spending']
-            
-        return f"${withdrawal_amount:,.0f}"
-    
-    display_projections['Required Withdrawal'] = display_projections.apply(calculate_required_withdrawal, axis=1)
-    display_cols.append('Required Withdrawal')
-    column_names.append('Required Withdrawal')
-    
-    # Add FIRE achieved column with emoji styling
-    def format_fire_achieved(achieved):
-        if achieved:
-            return "✅🔥"  # Checkmark + fire emoji
-        else:
-            return "⏳"    # Hourglass for pending
-    
-    display_projections['FIRE Status'] = display_projections['fire_achieved'].apply(format_fire_achieved)
-    display_cols.append('FIRE Status')
-    column_names.append('FIRE Status')
-    
-    # Select and rename columns
-    display_projections = display_projections[display_cols]
-    display_projections.columns = column_names
-    
-    st.dataframe(display_projections, use_container_width=True)
-    
-    # Add button to reset to original view
-    if 'current_scenario' in st.session_state:
-        if st.button("Reset to Original Plan View"):
-            del st.session_state.current_scenario
-            st.rerun()
-    
-    # Scenarios Analysis
+    # Scenarios Analysis (moved above table for better workflow)
     st.subheader("Scenario Analysis")
     
     scenario_type = st.selectbox(
@@ -654,6 +539,263 @@ if 'calculator' in st.session_state:
             st.plotly_chart(fig_scenario, use_container_width=True)
             
             st.info("💡 **Barista FIRE**: Work a lower-stress job that provides healthcare benefits while your portfolio continues growing until you reach full FIRE.")
+    
+    # Detailed Projections Table
+    st.subheader("Detailed Yearly Projections")
+    
+    # Use scenario data if available, otherwise use original projections
+    if 'current_scenario' in st.session_state:
+        scenario_data = st.session_state.current_scenario
+        display_data = pd.DataFrame(scenario_data['data'])
+        scenario_titles = {
+            'no_contributions': "No Contributions Scenario",
+            'part_time': "Part-Time Work Scenario", 
+            'barista_fire': "Barista FIRE Scenario"
+        }
+        scenario_title = scenario_titles.get(scenario_data['type'], "Unknown Scenario")
+        st.write(f"**Currently showing: {scenario_title}**")
+    else:
+        display_data = projections_df.copy()
+        st.write("**Currently showing: Original Plan**")
+    
+    # Format the projections for display
+    display_projections = display_data.copy()
+    display_projections['Total Portfolio'] = display_projections['portfolio_value'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Target Portfolio'] = display_projections['target_portfolio'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Annual Spending'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
+    
+    # Base columns to display
+    display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending']
+    column_names = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending']
+    
+    # Add contribution column if available - show $0 during retirement years
+    if 'annual_contribution' in display_projections.columns:
+        def format_contribution(row):
+            current_person_age = row['age']
+            contribution = row['annual_contribution']
+            
+            # If person has reached desired retirement age or achieved FIRE, no more contributions
+            if desired_retirement_age is not None and current_person_age >= desired_retirement_age:
+                return "$0"
+            elif row.get('fire_achieved', False):
+                return "$0"
+            else:
+                return f"${contribution:,.0f}"
+        
+        display_projections['Annual Contribution'] = display_projections.apply(format_contribution, axis=1)
+        display_cols.append('Annual Contribution')
+        column_names.append('Annual Contribution')
+    
+    # Add part-time income column if available (for part-time and barista scenarios)
+    if 'part_time_income' in display_projections.columns:
+        income_label = "Barista Income" if 'current_scenario' in st.session_state and st.session_state.current_scenario['type'] == 'barista_fire' else "Part-Time Income"
+        display_projections[income_label] = display_projections['part_time_income'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append(income_label)
+        column_names.append(income_label)
+    
+    # Add Social Security income column if available
+    if 'social_security_income' in display_projections.columns:
+        display_projections['Social Security'] = display_projections['social_security_income'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append('Social Security')
+        column_names.append('Social Security')
+    
+    # Add required withdrawal column - only show during retirement years
+    def calculate_required_withdrawal(row):
+        # Only show withdrawal if person has reached retirement age or achieved FIRE
+        current_person_age = row['age']
+        has_achieved_fire = row.get('fire_achieved', False)
+        
+        # Check if in retirement (either reached desired retirement age or achieved FIRE)
+        is_retired = False
+        if desired_retirement_age is not None:
+            is_retired = current_person_age >= desired_retirement_age
+        else:
+            is_retired = has_achieved_fire
+            
+        if not is_retired:
+            return "$0"  # No withdrawal needed during working years
+            
+        # Calculate withdrawal amount based on available columns
+        if 'net_withdrawal_needed' in row:
+            # For scenarios with part-time income
+            withdrawal_amount = row['net_withdrawal_needed']
+        elif 'net_spending_need' in row:
+            # For other scenarios (after social security)
+            withdrawal_amount = row['net_spending_need']
+        else:
+            # Fallback: use inflation adjusted spending
+            withdrawal_amount = row['inflation_adjusted_spending']
+            
+        return f"${withdrawal_amount:,.0f}"
+    
+    display_projections['Required Withdrawal'] = display_projections.apply(calculate_required_withdrawal, axis=1)
+    display_cols.append('Required Withdrawal')
+    column_names.append('Required Withdrawal')
+    
+    # Add FIRE achieved column with emoji styling
+    def format_fire_achieved(achieved):
+        if achieved:
+            return "✅🔥"  # Checkmark + fire emoji
+        else:
+            return "⏳"    # Hourglass for pending
+    
+    display_projections['FIRE Status'] = display_projections['fire_achieved'].apply(format_fire_achieved)
+    display_cols.append('FIRE Status')
+    column_names.append('FIRE Status')
+    
+    # Select and rename columns
+    display_projections = display_projections[display_cols]
+    display_projections.columns = column_names
+    
+    st.dataframe(display_projections, use_container_width=True)
+    
+    # Add button to reset to original view
+    if 'current_scenario' in st.session_state:
+        if st.button("Reset to Original Plan View"):
+            del st.session_state.current_scenario
+            st.rerun()
+    
+    # Retirement Income Sources Visualization
+    st.subheader("Retirement Income Sources")
+    
+    # Use current data (scenario or original)
+    current_data = display_data.copy()
+    
+    # Filter to retirement years only
+    retirement_data = []
+    for _, row in current_data.iterrows():
+        current_person_age = row['age']
+        has_achieved_fire = row.get('fire_achieved', False)
+        
+        # Check if in retirement
+        is_retired = False
+        if desired_retirement_age is not None:
+            is_retired = current_person_age >= desired_retirement_age
+        else:
+            is_retired = has_achieved_fire
+            
+        if is_retired:
+            retirement_data.append(row)
+    
+    if retirement_data:
+        retirement_df = pd.DataFrame(retirement_data)
+        
+        # Create stacked area chart for income sources
+        fig_sources = go.Figure()
+        
+        # Calculate withdrawal sources (simplified - assume equal split between taxable/tax-deferred for now)
+        ages = retirement_df['age'].tolist()
+        
+        # Social Security income
+        social_security = retirement_df.get('social_security_income', [0] * len(ages)).tolist()
+        
+        # Part-time/Barista income (if available)
+        part_time_income = []
+        if 'part_time_income' in retirement_df.columns:
+            part_time_income = retirement_df['part_time_income'].tolist()
+        else:
+            part_time_income = [0] * len(ages)
+        
+        # Portfolio withdrawals (Required Withdrawal minus other income sources)
+        portfolio_withdrawals = []
+        for i, row in retirement_df.iterrows():
+            if 'net_withdrawal_needed' in row:
+                withdrawal = max(0, row['net_withdrawal_needed'])
+            elif 'net_spending_need' in row:
+                withdrawal = max(0, row['net_spending_need'])
+            else:
+                withdrawal = max(0, row['inflation_adjusted_spending'] - row.get('social_security_income', 0) - row.get('part_time_income', 0))
+            portfolio_withdrawals.append(withdrawal)
+        
+        # Split portfolio withdrawals between taxable and tax-deferred (simplified assumption)
+        # Before social security age: more from taxable, After: more from tax-deferred
+        taxable_withdrawals = []
+        tax_deferred_withdrawals = []
+        
+        for i, age in enumerate(ages):
+            total_withdrawal = portfolio_withdrawals[i]
+            if age < social_security_age:
+                # Before SS: 70% taxable, 30% tax-deferred
+                taxable_withdrawals.append(total_withdrawal * 0.7)
+                tax_deferred_withdrawals.append(total_withdrawal * 0.3)
+            else:
+                # After SS: 40% taxable, 60% tax-deferred
+                taxable_withdrawals.append(total_withdrawal * 0.4)
+                tax_deferred_withdrawals.append(total_withdrawal * 0.6)
+        
+        # Add traces in stacking order
+        fig_sources.add_trace(go.Scatter(
+            x=ages,
+            y=taxable_withdrawals,
+            mode='lines',
+            stackgroup='one',
+            name='Taxable Portfolio',
+            line=dict(color='#1f77b4'),
+            fill='tonexty'
+        ))
+        
+        fig_sources.add_trace(go.Scatter(
+            x=ages,
+            y=[t + td for t, td in zip(taxable_withdrawals, tax_deferred_withdrawals)],
+            mode='lines',
+            stackgroup='one',
+            name='Tax-Deferred Portfolio',
+            line=dict(color='#ff7f0e'),
+            fill='tonexty'
+        ))
+        
+        # Add part-time income if applicable
+        if any(income > 0 for income in part_time_income):
+            current_stack = [t + td + pt for t, td, pt in zip(taxable_withdrawals, tax_deferred_withdrawals, part_time_income)]
+            income_label = "Barista Income" if 'current_scenario' in st.session_state and st.session_state.current_scenario['type'] == 'barista_fire' else "Part-Time Income"
+            
+            fig_sources.add_trace(go.Scatter(
+                x=ages,
+                y=current_stack,
+                mode='lines',
+                stackgroup='one',
+                name=income_label,
+                line=dict(color='#2ca02c'),
+                fill='tonexty'
+            ))
+            
+            # Update base for social security
+            base_values = current_stack
+        else:
+            base_values = [t + td for t, td in zip(taxable_withdrawals, tax_deferred_withdrawals)]
+        
+        # Add Social Security
+        if any(ss > 0 for ss in social_security):
+            fig_sources.add_trace(go.Scatter(
+                x=ages,
+                y=[base + ss for base, ss in zip(base_values, social_security)],
+                mode='lines',
+                stackgroup='one',
+                name='Social Security',
+                line=dict(color='#d62728'),
+                fill='tonexty'
+            ))
+        
+        fig_sources.update_layout(
+            title="Retirement Income Sources by Year",
+            xaxis_title="Age",
+            yaxis_title="Annual Income ($)",
+            hovermode='x unified',
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=1,
+                xanchor="left",
+                x=1.01
+            ),
+            margin=dict(r=150)
+        )
+        
+        st.plotly_chart(fig_sources, use_container_width=True)
+        
+        st.info("💡 This chart shows the composition of your retirement income sources. Taxable accounts are typically used first to allow tax-deferred accounts to continue growing.")
+    else:
+        st.info("📊 Income sources visualization will appear here once you reach retirement age or achieve FIRE.")
     
     # Monte Carlo Simulation
     st.subheader("Monte Carlo Simulation")
