@@ -102,30 +102,19 @@ class FIRECalculator:
         return max(0, net_spending_need / self.withdrawal_rate)
     
     def calculate_years_to_fire(self) -> int:
-        """Calculate the number of years until FIRE is achieved"""
-        target = self.calculate_target_portfolio()
-        current_total = self.current_total_portfolio
+        """Calculate the number of years until FIRE is achieved using actual projections"""
+        # Generate projections to find when FIRE is actually achieved
+        # considering all factors: large expenses, windfalls, complex logic
+        projections = self.generate_yearly_projections()
         
-        if current_total >= target:
-            return 0
+        # Find the first year where FIRE is achieved
+        for projection in projections:
+            if projection['fire_achieved']:
+                return projection['year']
         
-        # Use compound interest formula to calculate years needed
-        # Future Value = PV * (1 + r)^n + PMT * [((1 + r)^n - 1) / r]
-        # Solving for n when FV = target portfolio
-        
-        if self.annual_contribution == 0:
-            # Simple compound interest: target = current * (1 + growth_rate)^years
-            years = math.log(target / current_total) / math.log(1 + self.growth_rate)
-        else:
-            # Using numerical approximation for annuity formula
-            years = 0
-            portfolio_value = current_total
-            
-            while portfolio_value < target and years < 100:  # Safety limit
-                portfolio_value = portfolio_value * (1 + self.growth_rate) + self.annual_contribution
-                years += 1
-        
-        return max(0, int(math.ceil(years)))
+        # If FIRE is not achieved within the projection timeframe, return None
+        # This will be handled by the caller to show "Not Achieved"
+        return None
     
     def generate_yearly_projections(self, num_years: int = None) -> List[Dict]:
         """Generate year-by-year portfolio projections"""
@@ -152,9 +141,6 @@ class FIRECalculator:
             
             # Net spending need after social security
             net_spending_need = inflation_adjusted_spending - social_security_income
-            
-            # Check if FIRE is achieved (against inflation-adjusted target)
-            fire_achieved = portfolio_value >= inflation_adjusted_target
             
             # Calculate sustainable withdrawal
             sustainable_withdrawal = portfolio_value * self.withdrawal_rate
@@ -183,6 +169,19 @@ class FIRECalculator:
                     end_age = self.large_expense.get('end_age', 0)
                     if start_age <= current_age <= end_age:
                         large_expense_this_year = self.large_expense.get('annual_amount', 0)
+            
+            # Check if FIRE is achieved (against inflation-adjusted target)
+            # Must have sufficient portfolio AND be able to sustain withdrawals
+            fire_achieved = portfolio_value >= inflation_adjusted_target
+            
+            # Additional check: if we have large expenses ongoing that reduce our effective available portfolio,
+            # we should not consider FIRE achieved during those years
+            if self.large_expense and large_expense_this_year > 0:
+                # If we have a large expense this year, check if remaining portfolio after expense 
+                # would still meet FIRE target for sustainable withdrawals
+                portfolio_after_expense = portfolio_value - large_expense_this_year
+                if portfolio_after_expense < inflation_adjusted_target:
+                    fire_achieved = False
             
             # Calculate final contribution for this year
             base_contribution = max(0, self.annual_contribution - contribution_reduction)

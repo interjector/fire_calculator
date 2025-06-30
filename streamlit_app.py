@@ -106,7 +106,10 @@ if st.sidebar.button("Calculate FIRE Plan", type="primary"):
     st.session_state.calculator = calculator
     st.session_state.target_portfolio = calculator.calculate_target_portfolio()
     st.session_state.years_to_fire = calculator.calculate_years_to_fire()
-    st.session_state.fire_age = current_age + st.session_state.years_to_fire
+    if st.session_state.years_to_fire is not None:
+        st.session_state.fire_age = current_age + st.session_state.years_to_fire
+    else:
+        st.session_state.fire_age = None
     st.session_state.projections = calculator.generate_yearly_projections()
     st.session_state.scenarios = calculator.calculate_scenarios()
     st.session_state.retirement_readiness = calculator.check_retirement_readiness()
@@ -169,8 +172,12 @@ if 'calculator' in st.session_state:
         updated_years_to_fire = temp_calculator.calculate_years_to_fire()
         updated_target_portfolio = temp_calculator.calculate_target_portfolio()
         
-        display_fire_age = current_age + updated_years_to_fire
-        display_years_to_fire = updated_years_to_fire
+        if updated_years_to_fire is not None:
+            display_fire_age = current_age + updated_years_to_fire
+            display_years_to_fire = updated_years_to_fire
+        else:
+            display_fire_age = None
+            display_years_to_fire = None
         display_target_portfolio = updated_target_portfolio
     
     # Retirement readiness alert
@@ -688,19 +695,17 @@ if 'calculator' in st.session_state:
     
     # Add required withdrawal column - only show during retirement years
     def calculate_required_withdrawal(row):
-        # Only show withdrawal if person has reached retirement age or achieved FIRE
+        # Only show withdrawal if person has achieved FIRE AND reached retirement age
         current_person_age = row['age']
         has_achieved_fire = row.get('fire_achieved', False)
         
-        # Check if in retirement (either reached desired retirement age or achieved FIRE)
-        is_retired = False
-        if desired_retirement_age is not None:
-            is_retired = current_person_age >= desired_retirement_age
-        else:
-            is_retired = has_achieved_fire
+        # Must have achieved FIRE to start withdrawing
+        if not has_achieved_fire:
+            return "$0"
             
-        if not is_retired:
-            return "$0"  # No withdrawal needed during working years
+        # Also check desired retirement age if specified
+        if desired_retirement_age is not None and current_person_age < desired_retirement_age:
+            return "$0"  # Wait until desired retirement age even if FIRE is achieved
             
         # Calculate withdrawal amount based on available columns
         if 'net_withdrawal_needed' in row:
@@ -720,13 +725,23 @@ if 'calculator' in st.session_state:
     column_names.append('Required Withdrawal')
     
     # Add FIRE achieved column with emoji styling
-    def format_fire_achieved(achieved):
-        if achieved:
-            return "✅🔥"  # Checkmark + fire emoji
+    def format_fire_achieved(row):
+        current_person_age = row['age']
+        has_achieved_fire = row.get('fire_achieved', False)
+        
+        # Check if ready for withdrawals (same logic as withdrawal calculation)
+        ready_for_retirement = has_achieved_fire
+        if desired_retirement_age is not None and current_person_age < desired_retirement_age:
+            ready_for_retirement = False
+            
+        if ready_for_retirement:
+            return "✅🔥"  # Checkmark + fire emoji - ready to retire
+        elif has_achieved_fire:
+            return "🔥⏰"  # Fire achieved but waiting for desired retirement age
         else:
-            return "⏳"    # Hourglass for pending
+            return "⏳"    # Hourglass for pending FIRE achievement
     
-    display_projections['FIRE Status'] = display_projections['fire_achieved'].apply(format_fire_achieved)
+    display_projections['FIRE Status'] = display_projections.apply(format_fire_achieved, axis=1)
     display_cols.append('FIRE Status')
     column_names.append('FIRE Status')
     
