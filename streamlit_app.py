@@ -114,27 +114,94 @@ if st.sidebar.button("Calculate FIRE Plan", type="primary"):
 
 # Display results if available
 if 'calculator' in st.session_state:
-    # Retirement readiness alert
-    if desired_retirement_age is not None:
-        if st.session_state.fire_age <= desired_retirement_age:
-            st.success(f"🎯 **On Track!** You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}, which is {desired_retirement_age - st.session_state.fire_age:.1f} years before your target retirement age of {desired_retirement_age}.")
+    # Check if we should use scenario data for metrics calculation
+    if 'current_scenario' in st.session_state:
+        # Use scenario data to calculate updated metrics
+        scenario_projections = st.session_state.current_scenario['data']
+        scenario_df = pd.DataFrame(scenario_projections)
+        
+        # Find when FIRE is achieved in the scenario
+        fire_achieved_rows = scenario_df[scenario_df['fire_achieved'] == True]
+        if not fire_achieved_rows.empty:
+            scenario_fire_age = fire_achieved_rows.iloc[0]['age']
+            scenario_years_to_fire = scenario_fire_age - current_age
+            scenario_target_portfolio = fire_achieved_rows.iloc[0]['target_portfolio']
         else:
-            years_behind = st.session_state.fire_age - desired_retirement_age
-            st.error(f"⚠️ **Behind Target!** You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}, which is {years_behind:.1f} years after your target retirement age of {desired_retirement_age}. Consider increasing contributions or adjusting your retirement timeline.")
+            # FIRE not achieved in scenario
+            scenario_fire_age = None
+            scenario_years_to_fire = None
+            scenario_target_portfolio = st.session_state.target_portfolio
+            
+        # Use scenario metrics
+        display_fire_age = scenario_fire_age
+        display_years_to_fire = scenario_years_to_fire
+        display_target_portfolio = scenario_target_portfolio
+        
+        # Show which scenario is being displayed
+        scenario_titles = {
+            'no_contributions': "No Contributions Scenario",
+            'part_time': "Part-Time Work Scenario", 
+            'barista_fire': "Barista FIRE Scenario"
+        }
+        scenario_name = scenario_titles.get(st.session_state.current_scenario['type'], "Current Scenario")
+        st.info(f"📊 **Showing metrics for: {scenario_name}**")
     else:
-        st.info(f"📊 You're projected to achieve FIRE at age {st.session_state.fire_age:.0f}. Set a desired retirement age in the sidebar to see if you're on track!")
+        # Use original plan metrics but recalculate if large expense or windfalls changed
+        # Recalculate to account for large expenses and windfalls
+        temp_calculator = FIRECalculator(
+            current_age=current_age,
+            current_portfolio_taxable=current_portfolio_taxable,
+            current_portfolio_tax_deferred=current_portfolio_tax_deferred,
+            annual_contribution=annual_contribution,
+            expected_annual_spending=expected_annual_spending,
+            growth_rate=growth_rate,
+            inflation_rate=inflation_rate,
+            withdrawal_rate=withdrawal_rate,
+            social_security_income=social_security_income,
+            social_security_age=social_security_age,
+            desired_retirement_age=desired_retirement_age,
+            life_expectancy=life_expectancy,
+            fire_type=fire_type,
+            windfalls=windfalls,
+            large_expense=large_expense
+        )
+        
+        updated_years_to_fire = temp_calculator.calculate_years_to_fire()
+        updated_target_portfolio = temp_calculator.calculate_target_portfolio()
+        
+        display_fire_age = current_age + updated_years_to_fire
+        display_years_to_fire = updated_years_to_fire
+        display_target_portfolio = updated_target_portfolio
+    
+    # Retirement readiness alert
+    if desired_retirement_age is not None and display_fire_age is not None:
+        if display_fire_age <= desired_retirement_age:
+            st.success(f"🎯 **On Track!** You're projected to achieve FIRE at age {display_fire_age:.0f}, which is {desired_retirement_age - display_fire_age:.1f} years before your target retirement age of {desired_retirement_age}.")
+        else:
+            years_behind = display_fire_age - desired_retirement_age
+            st.error(f"⚠️ **Behind Target!** You're projected to achieve FIRE at age {display_fire_age:.0f}, which is {years_behind:.1f} years after your target retirement age of {desired_retirement_age}. Consider increasing contributions or adjusting your retirement timeline.")
+    elif display_fire_age is not None:
+        st.info(f"📊 You're projected to achieve FIRE at age {display_fire_age:.0f}. Set a desired retirement age in the sidebar to see if you're on track!")
+    else:
+        st.warning("⚠️ FIRE not achieved within the projected timeframe. Consider increasing contributions or reducing expenses.")
     
     # Main results
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("Target Portfolio", f"${st.session_state.target_portfolio:,.0f}")
+        st.metric("Target Portfolio", f"${display_target_portfolio:,.0f}")
     
     with col2:
-        st.metric("Years to FIRE", f"{st.session_state.years_to_fire:.1f}")
+        if display_years_to_fire is not None:
+            st.metric("Years to FIRE", f"{display_years_to_fire:.1f}")
+        else:
+            st.metric("Years to FIRE", "Not Achieved")
     
     with col3:
-        st.metric("FIRE Age", f"{st.session_state.fire_age:.0f}")
+        if display_fire_age is not None:
+            st.metric("FIRE Age", f"{display_fire_age:.0f}")
+        else:
+            st.metric("FIRE Age", "Not Achieved")
     
     with col4:
         current_total = current_portfolio_taxable + current_portfolio_tax_deferred
