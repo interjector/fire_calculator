@@ -132,7 +132,7 @@ if 'calculator' in st.session_state:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=projections_df['age'],
-        y=projections_df['total_portfolio'],
+        y=projections_df['portfolio_value'],
         mode='lines',
         name='Total Portfolio',
         line=dict(color='blue', width=3)
@@ -160,15 +160,15 @@ if 'calculator' in st.session_state:
     
     # Format the projections for display
     display_projections = projections_df.copy()
-    display_projections['Total Portfolio'] = display_projections['total_portfolio'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Taxable'] = display_projections['taxable_portfolio'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Tax-Deferred'] = display_projections['tax_deferred_portfolio'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Annual Spending'] = display_projections['annual_spending'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Total Portfolio'] = display_projections['portfolio_value'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Target Portfolio'] = display_projections['target_portfolio'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Annual Spending'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
+    display_projections['Annual Contribution'] = display_projections['annual_contribution'].apply(lambda x: f"${x:,.0f}")
     
     # Select columns to display
-    display_cols = ['age', 'Total Portfolio', 'Taxable', 'Tax-Deferred', 'Annual Spending']
+    display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending', 'Annual Contribution', 'fire_achieved']
     display_projections = display_projections[display_cols]
-    display_projections.columns = ['Age', 'Total Portfolio', 'Taxable Portfolio', 'Tax-Deferred Portfolio', 'Annual Spending']
+    display_projections.columns = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending', 'Annual Contribution', 'FIRE Achieved']
     
     st.dataframe(display_projections, use_container_width=True)
     
@@ -191,7 +191,7 @@ if 'calculator' in st.session_state:
             
             fig_scenario.add_trace(go.Scatter(
                 x=projections_df['age'],
-                y=projections_df['total_portfolio'],
+                y=projections_df['portfolio_value'],
                 mode='lines',
                 name='With Contributions',
                 line=dict(color='blue', width=3)
@@ -200,7 +200,7 @@ if 'calculator' in st.session_state:
             no_contrib_df = pd.DataFrame(no_contrib_projections)
             fig_scenario.add_trace(go.Scatter(
                 x=no_contrib_df['age'],
-                y=no_contrib_df['total_portfolio'],
+                y=no_contrib_df['portfolio_value'],
                 mode='lines',
                 name='No Contributions',
                 line=dict(color='red', width=3, dash='dash')
@@ -236,7 +236,7 @@ if 'calculator' in st.session_state:
             
             fig_scenario.add_trace(go.Scatter(
                 x=projections_df['age'],
-                y=projections_df['total_portfolio'],
+                y=projections_df['portfolio_value'],
                 mode='lines',
                 name='Regular Plan',
                 line=dict(color='blue', width=3)
@@ -245,7 +245,7 @@ if 'calculator' in st.session_state:
             part_time_df = pd.DataFrame(part_time_projections)
             fig_scenario.add_trace(go.Scatter(
                 x=part_time_df['age'],
-                y=part_time_df['total_portfolio'],
+                y=part_time_df['portfolio_value'],
                 mode='lines',
                 name='Part-Time Plan',
                 line=dict(color='green', width=3, dash='dash')
