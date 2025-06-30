@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 st.title("🔥 VIBE FIRE Calculator")
-st.markdown("Visualize Independence, Build Equity - Financial Independence, Retire Early Calculator")
+st.markdown("Financial Independence, Retire Early Calculator")
 
 # Sidebar for inputs
 st.sidebar.header("Your Financial Profile")
@@ -158,19 +158,53 @@ if 'calculator' in st.session_state:
     # Detailed Projections Table
     st.subheader("Detailed Yearly Projections")
     
+    # Use scenario data if available, otherwise use original projections
+    if 'current_scenario' in st.session_state:
+        scenario_data = st.session_state.current_scenario
+        display_data = pd.DataFrame(scenario_data['data'])
+        scenario_title = "No Contributions Scenario" if scenario_data['type'] == 'no_contributions' else "Part-Time Work Scenario"
+        st.write(f"**Currently showing: {scenario_title}**")
+    else:
+        display_data = projections_df.copy()
+        st.write("**Currently showing: Original Plan**")
+    
     # Format the projections for display
-    display_projections = projections_df.copy()
+    display_projections = display_data.copy()
     display_projections['Total Portfolio'] = display_projections['portfolio_value'].apply(lambda x: f"${x:,.0f}")
     display_projections['Target Portfolio'] = display_projections['target_portfolio'].apply(lambda x: f"${x:,.0f}")
     display_projections['Annual Spending'] = display_projections['inflation_adjusted_spending'].apply(lambda x: f"${x:,.0f}")
-    display_projections['Annual Contribution'] = display_projections['annual_contribution'].apply(lambda x: f"${x:,.0f}")
     
-    # Select columns to display
-    display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending', 'Annual Contribution', 'fire_achieved']
+    # Base columns to display
+    display_cols = ['age', 'Total Portfolio', 'Target Portfolio', 'Annual Spending']
+    column_names = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending']
+    
+    # Add contribution column if available
+    if 'annual_contribution' in display_projections.columns:
+        display_projections['Annual Contribution'] = display_projections['annual_contribution'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append('Annual Contribution')
+        column_names.append('Annual Contribution')
+    
+    # Add part-time income column if available
+    if 'part_time_income' in display_projections.columns:
+        display_projections['Part-Time Income'] = display_projections['part_time_income'].apply(lambda x: f"${x:,.0f}")
+        display_cols.append('Part-Time Income')
+        column_names.append('Part-Time Income')
+    
+    # Add FIRE achieved column
+    display_cols.append('fire_achieved')
+    column_names.append('FIRE Achieved')
+    
+    # Select and rename columns
     display_projections = display_projections[display_cols]
-    display_projections.columns = ['Age', 'Portfolio Value', 'Target Portfolio', 'Annual Spending', 'Annual Contribution', 'FIRE Achieved']
+    display_projections.columns = column_names
     
     st.dataframe(display_projections, use_container_width=True)
+    
+    # Add button to reset to original view
+    if 'current_scenario' in st.session_state:
+        if st.button("Reset to Original Plan View"):
+            del st.session_state.current_scenario
+            st.rerun()
     
     # Scenarios Analysis
     st.subheader("Scenario Analysis")
@@ -185,6 +219,12 @@ if 'calculator' in st.session_state:
             no_contrib_projections = st.session_state.calculator.generate_no_contribution_projections(
                 life_expectancy - current_age
             )
+            
+            # Store scenario data for table display
+            st.session_state.current_scenario = {
+                'type': 'no_contributions',
+                'data': no_contrib_projections
+            }
             
             # Create comparison chart
             fig_scenario = go.Figure()
@@ -205,6 +245,43 @@ if 'calculator' in st.session_state:
                 name='No Contributions',
                 line=dict(color='red', width=3, dash='dash')
             ))
+            
+            # Add FIRE target line
+            fig_scenario.add_hline(
+                y=st.session_state.target_portfolio,
+                line_dash="dot",
+                line_color="green",
+                annotation_text=f"FIRE Target: ${st.session_state.target_portfolio:,.0f}"
+            )
+            
+            # Highlight FIRE achievement points
+            fire_achieved_contrib = projections_df[projections_df['fire_achieved'] == True]
+            fire_achieved_no_contrib = no_contrib_df[no_contrib_df['fire_achieved'] == True]
+            
+            if not fire_achieved_contrib.empty:
+                first_fire_contrib = fire_achieved_contrib.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_contrib['age']], 
+                    y=[first_fire_contrib['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='blue', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_contrib["age"]:.0f} (With Contributions)',
+                    showlegend=True
+                )
+            
+            if not fire_achieved_no_contrib.empty:
+                first_fire_no_contrib = fire_achieved_no_contrib.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_no_contrib['age']], 
+                    y=[first_fire_no_contrib['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='red', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_no_contrib["age"]:.0f} (No Contributions)',
+                    showlegend=True
+                )
+                st.success(f"🎉 FIRE achieved at age {first_fire_no_contrib['age']:.0f} with no additional contributions!")
+            else:
+                st.warning("⚠️ FIRE not achieved within the projected timeframe with no contributions.")
             
             fig_scenario.update_layout(
                 title="Scenario Comparison: With vs Without Contributions",
@@ -231,6 +308,12 @@ if 'calculator' in st.session_state:
                 life_expectancy - current_age
             )
             
+            # Store scenario data for table display
+            st.session_state.current_scenario = {
+                'type': 'part_time',
+                'data': part_time_projections
+            }
+            
             # Create comparison chart
             fig_scenario = go.Figure()
             
@@ -250,6 +333,67 @@ if 'calculator' in st.session_state:
                 name='Part-Time Plan',
                 line=dict(color='green', width=3, dash='dash')
             ))
+            
+            # Add FIRE target line
+            fig_scenario.add_hline(
+                y=st.session_state.target_portfolio,
+                line_dash="dot",
+                line_color="orange",
+                annotation_text=f"FIRE Target: ${st.session_state.target_portfolio:,.0f}"
+            )
+            
+            # Highlight FIRE achievement points
+            fire_achieved_regular = projections_df[projections_df['fire_achieved'] == True]
+            fire_achieved_part_time = part_time_df[part_time_df['fire_achieved'] == True]
+            
+            if not fire_achieved_regular.empty:
+                first_fire_regular = fire_achieved_regular.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_regular['age']], 
+                    y=[first_fire_regular['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='blue', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_regular["age"]:.0f} (Regular Plan)',
+                    showlegend=True
+                )
+            
+            if not fire_achieved_part_time.empty:
+                first_fire_part_time = fire_achieved_part_time.iloc[0]
+                fig_scenario.add_scatter(
+                    x=[first_fire_part_time['age']], 
+                    y=[first_fire_part_time['portfolio_value']],
+                    mode='markers',
+                    marker=dict(color='green', size=12, symbol='star'),
+                    name=f'FIRE @ {first_fire_part_time["age"]:.0f} (Part-Time Plan)',
+                    showlegend=True
+                )
+                
+                # Show comparison of FIRE achievement
+                if not fire_achieved_regular.empty:
+                    age_diff = first_fire_part_time['age'] - first_fire_regular['age']
+                    if age_diff < 0:
+                        st.success(f"🎉 Part-time plan achieves FIRE {abs(age_diff):.1f} years earlier at age {first_fire_part_time['age']:.0f}!")
+                    elif age_diff > 0:
+                        st.info(f"📊 Part-time plan achieves FIRE {age_diff:.1f} years later at age {first_fire_part_time['age']:.0f}")
+                    else:
+                        st.info(f"📊 Both plans achieve FIRE at the same age: {first_fire_part_time['age']:.0f}")
+                else:
+                    st.success(f"🎉 FIRE achieved at age {first_fire_part_time['age']:.0f} with part-time work plan!")
+            else:
+                st.warning("⚠️ FIRE not achieved within the projected timeframe with part-time work plan.")
+            
+            # Show part-time period visualization
+            part_time_periods = part_time_df[part_time_df['is_part_time'] == True]
+            if not part_time_periods.empty:
+                fig_scenario.add_vrect(
+                    x0=part_time_periods['age'].min(),
+                    x1=part_time_periods['age'].max(),
+                    fillcolor="rgba(255,255,0,0.1)",
+                    layer="below",
+                    line_width=0,
+                    annotation_text="Part-Time Period",
+                    annotation_position="top left"
+                )
             
             fig_scenario.update_layout(
                 title="Scenario Comparison: Regular vs Part-Time Work",
@@ -366,7 +510,7 @@ else:
     # Show some example information
     st.subheader("About VIBE FIRE")
     st.markdown("""
-    **VIBE FIRE** - **Visualize Independence, Build Equity** - combines the power of FIRE (Financial Independence, Retire Early) with comprehensive financial visualization and planning tools.
+    **VIBE FIRE** combines the power of FIRE (Financial Independence, Retire Early) with comprehensive financial visualization and planning tools.
     
     **Three Types of FIRE:**
     - **Lean FIRE**: Retiring with a smaller nest egg, typically requiring more frugal living
