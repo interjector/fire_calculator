@@ -16,21 +16,22 @@ const SHEET_ID = '1liB5nwc0oEBRPu9J1YSO1pNDYHV9_Ofr4nDmSXbJ0z8';
 
 // Test function you can run manually in the script editor
 function testFeedbackSubmission() {
-  // Simulate a POST request with test data
+  // Simulate a POST request with form data (like we're now sending)
   const testEvent = {
     postData: {
-      contents: JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: "Test",
-        feedback: "This is a test feedback submission",
-        email: "test@example.com",
-        app: "VIBE FIRE Calculator"
-      })
+      type: 'application/x-www-form-urlencoded',
+      contents: 'timestamp=2024-01-01T00:00:00.000Z&type=Test&feedback=Test+feedback&email=test@example.com&app=VIBE+FIRE+Calculator'
     },
-    parameter: {}
+    parameter: {
+      timestamp: new Date().toISOString(),
+      type: "Test",
+      feedback: "This is a test feedback submission",
+      email: "test@example.com",
+      app: "VIBE FIRE Calculator"
+    }
   };
   
-  console.log('Running test with simulated data...');
+  console.log('Running test with simulated form data...');
   const result = doPost(testEvent);
   console.log('Test result:', result.getContent());
   return result;
@@ -46,17 +47,25 @@ function doGet(e) {
 function doPost(e) {
   try {
     // Log the incoming request for debugging
-    console.log('Received POST request:', e);
+    console.log('Received POST request:', JSON.stringify(e, null, 2));
+    
+    // Validate that we have postData or parameter
+    if (!e.postData && !e.parameter) {
+      throw new Error('No POST data or parameters received');
+    }
     
     // Parse the incoming data (handle both JSON and form data)
     let data;
-    if (e.postData.type === 'application/json') {
+    if (e.postData && e.postData.type === 'application/json') {
       data = JSON.parse(e.postData.contents);
-    } else {
-      // Handle form data
+      console.log('Parsed JSON data:', data);
+    } else if (e.parameter) {
+      // Handle form data from parameters
       data = e.parameter;
+      console.log('Using parameter data:', data);
+    } else {
+      throw new Error('Unable to parse request data');
     }
-    console.log('Parsed data:', data);
     
     // Open the spreadsheet
     const sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();

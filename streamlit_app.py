@@ -1118,10 +1118,10 @@ def submit_feedback(feedback_text, feedback_type, email=None):
     
     if webhook_url:
         try:
-            # Try with form data instead of JSON
-            response = requests.post(
-                webhook_url, 
-                data=feedback_data,  # Use form data instead of JSON
+            # Try GET request with parameters (some Google Apps Scripts work better this way)
+            response = requests.get(
+                webhook_url,
+                params=feedback_data,
                 timeout=10
             )
             if response.status_code == 200:
