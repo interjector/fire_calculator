@@ -14,6 +14,28 @@
 // Replace with your Google Sheet ID
 const SHEET_ID = '1liB5nwc0oEBRPu9J1YSO1pNDYHV9_Ofr4nDmSXbJ0z8';
 
+// Test function you can run manually in the script editor
+function testFeedbackSubmission() {
+  // Simulate a POST request with test data
+  const testEvent = {
+    postData: {
+      contents: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: "Test",
+        feedback: "This is a test feedback submission",
+        email: "test@example.com",
+        app: "VIBE FIRE Calculator"
+      })
+    },
+    parameter: {}
+  };
+  
+  console.log('Running test with simulated data...');
+  const result = doPost(testEvent);
+  console.log('Test result:', result.getContent());
+  return result;
+}
+
 function doPost(e) {
   try {
     // Log the incoming request for debugging
