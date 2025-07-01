@@ -36,13 +36,26 @@ function testFeedbackSubmission() {
   return result;
 }
 
+// Simple GET test function
+function doGet(e) {
+  return ContentService
+    .createTextOutput("Google Apps Script is working!")
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
 function doPost(e) {
   try {
     // Log the incoming request for debugging
     console.log('Received POST request:', e);
     
-    // Parse the incoming data
-    const data = JSON.parse(e.postData.contents);
+    // Parse the incoming data (handle both JSON and form data)
+    let data;
+    if (e.postData.type === 'application/json') {
+      data = JSON.parse(e.postData.contents);
+    } else {
+      // Handle form data
+      data = e.parameter;
+    }
     console.log('Parsed data:', data);
     
     // Open the spreadsheet

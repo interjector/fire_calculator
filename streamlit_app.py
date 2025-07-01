@@ -1118,7 +1118,12 @@ def submit_feedback(feedback_text, feedback_type, email=None):
     
     if webhook_url:
         try:
-            response = requests.post(webhook_url, json=feedback_data, timeout=10)
+            # Try with form data instead of JSON
+            response = requests.post(
+                webhook_url, 
+                data=feedback_data,  # Use form data instead of JSON
+                timeout=10
+            )
             if response.status_code == 200:
                 return True, "Feedback submitted successfully!"
             else:
