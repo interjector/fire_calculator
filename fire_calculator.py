@@ -240,8 +240,8 @@ class FIRECalculator:
             
             # Calculate next year's portfolio value
             if year < num_years:
-                # Determine if we're in retirement phase (either FIRE achieved OR actively withdrawing)
-                in_retirement_phase = fire_achieved or (self.annual_contribution == 0 and net_spending_need > 0)
+                # Determine if we're in retirement phase (only when FIRE is achieved)
+                in_retirement_phase = fire_achieved
                 
                 if in_retirement_phase:
                     # During retirement: grow portfolio and subtract actual withdrawals
