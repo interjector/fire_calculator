@@ -6,7 +6,7 @@ from components.theme import get_palette, inject_base_css
 from components.nav import render_nav
 
 st.set_page_config(
-    page_title="Blog — FIREpath",
+    page_title="Blog — Ember",
     page_icon="✍️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -28,7 +28,7 @@ st.markdown(f"""
     letter-spacing: -0.05em; margin: 0 0 0.6rem;
 }}
 .blog-hero p {{
-    font-size: 1rem; color: {p['t2']}; max-width: 560px; line-height: 1.65; margin: 0;
+    font-size: 1.05rem; color: {p['t2']}; max-width: 560px; line-height: 1.65; margin: 0;
 }}
 
 /* ── Post cards ────────────────────────────────────────── */
@@ -52,7 +52,7 @@ st.markdown(f"""
     font-size: 1.15rem; font-weight: 700; color: {p['t1']};
     letter-spacing: -0.02em; line-height: 1.3; margin-bottom: 0.55rem;
 }}
-.pc-desc {{ font-size: 0.85rem; color: {p['t2']}; line-height: 1.65; margin-bottom: 1.2rem; }}
+.pc-desc {{ font-size: 0.95rem; color: {p['t2']}; line-height: 1.7; margin-bottom: 1.2rem; }}
 .pc-meta {{
     display: flex; gap: 0.8rem; align-items: center;
     font-size: 0.72rem; color: {p['t3']};
@@ -96,7 +96,7 @@ st.markdown(f"""
 }}
 .article-body h2:first-of-type {{ border-top: none; padding-top: 0; margin-top: 0 !important; }}
 .article-body p {{
-    font-size: 0.93rem !important; color: {p['t2']} !important; line-height: 1.75 !important;
+    font-size: 1.02rem !important; color: {p['t2']} !important; line-height: 1.8 !important;
     margin-bottom: 0.9rem !important;
 }}
 .article-body strong {{ color: {p['t1']} !important; font-weight: 600 !important; }}
@@ -104,7 +104,7 @@ st.markdown(f"""
     padding-left: 1.4rem; margin-bottom: 0.9rem;
 }}
 .article-body li {{
-    font-size: 0.93rem !important; color: {p['t2']} !important;
+    font-size: 1.02rem !important; color: {p['t2']} !important;
     line-height: 1.7 !important; margin-bottom: 0.3rem;
 }}
 .article-body blockquote {{

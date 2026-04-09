@@ -12,7 +12,7 @@ from components.theme import get_palette, inject_base_css
 from components.nav import render_nav
 
 st.set_page_config(
-    page_title="FIRE Calculator — FIREpath",
+    page_title="FIRE Calculator — Ember",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
