@@ -42,7 +42,7 @@ def render_nav(p, is_dark):
     with c1:
         st.markdown(
             '<p class="nav-brand">'
-            '⚡ <span class="nb-fire">FIRE</span><span class="nb-path">path</span>'
+            '🔥 <span class="nb-fire">Ember</span>'
             '</p>',
             unsafe_allow_html=True,
         )

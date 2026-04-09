@@ -6,7 +6,7 @@ from components.theme import get_palette, inject_base_css
 from components.nav import render_nav
 
 st.set_page_config(
-    page_title="Learn — FIREpath",
+    page_title="Learn — Ember",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -28,7 +28,7 @@ st.markdown(f"""
     letter-spacing: -0.05em; margin: 0 0 0.6rem;
 }}
 .learn-hero p {{
-    font-size: 1rem; color: {p['t2']}; max-width: 560px; line-height: 1.65; margin: 0;
+    font-size: 1.05rem; color: {p['t2']}; max-width: 560px; line-height: 1.65; margin: 0;
 }}
 
 /* ── Concept cards ──────────────────────────────────────── */
@@ -50,7 +50,7 @@ st.markdown(f"""
     font-size: 1.15rem; font-weight: 700; color: {p['t1']};
     letter-spacing: -0.02em; margin-bottom: 0.5rem;
 }}
-.cc-body {{ font-size: 0.88rem; color: {p['t2']}; line-height: 1.7; }}
+.cc-body {{ font-size: 0.97rem; color: {p['t2']}; line-height: 1.75; }}
 .cc-body strong {{ color: {p['t1']}; }}
 .cc-body code {{
     background: {p['surface2']}; border: 1px solid {p['border2']};
@@ -103,8 +103,8 @@ st.markdown(f"""
     display: flex; align-items: center; justify-content: center;
     font-size: 0.85rem; flex-shrink: 0; margin-top: 0.05rem;
 }}
-.cli-title {{ font-size: 0.88rem; font-weight: 600; color: {p['t1']}; margin-bottom: 0.15rem; }}
-.cli-desc {{ font-size: 0.8rem; color: {p['t3']}; line-height: 1.5; }}
+.cli-title {{ font-size: 0.97rem; font-weight: 600; color: {p['t1']}; margin-bottom: 0.15rem; }}
+.cli-desc {{ font-size: 0.9rem; color: {p['t3']}; line-height: 1.6; }}
 
 /* ── Section heading ────────────────────────────────────── */
 .learn-section-hdr {{

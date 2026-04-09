@@ -160,20 +160,37 @@ html, body, [class*="css"] {{
 .stTabs [data-baseweb="tab-panel"] {{ padding-top: 1.2rem !important; }}
 /* ── Buttons ─────────────────────────────────────────── */
 .stButton > button {{
-    border-radius: 7px !important; font-size: 0.79rem !important;
+    border-radius: 7px !important; font-size: 0.85rem !important;
     font-weight: 600 !important; letter-spacing: 0.02em !important; transition: all 0.15s ease !important;
 }}
-.stButton > button[kind="primary"] {{
-    background: linear-gradient(135deg, {p['accent']}, {'#059669' if dark else '#047857'}) !important;
-    border: none !important; color: #fff !important; box-shadow: 0 3px 10px {p['accent_dim']} !important;
+/* Primary — target all known Streamlit button attribute patterns */
+.stButton > button[kind="primary"],
+[data-testid="baseButton-primary"],
+[data-testid="stBaseButton-primary"] {{
+    background: {p['accent']} !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 10px {p['accent_dim']} !important;
 }}
-.stButton > button[kind="primary"]:hover {{
-    box-shadow: 0 5px 16px {p['accent_dim']} !important; transform: translateY(-1px) !important;
+.stButton > button[kind="primary"]:hover,
+[data-testid="baseButton-primary"]:hover,
+[data-testid="stBaseButton-primary"]:hover {{
+    background: {'#0ea572' if dark else '#047857'} !important;
+    box-shadow: 0 5px 16px {p['accent_dim']} !important;
+    transform: translateY(-1px) !important;
+    color: #ffffff !important;
 }}
-.stButton > button[kind="secondary"] {{
-    background: transparent !important; border: 1px solid {p['border2']} !important; color: {p['t2']} !important;
+/* Secondary */
+.stButton > button[kind="secondary"],
+[data-testid="baseButton-secondary"],
+[data-testid="stBaseButton-secondary"] {{
+    background: transparent !important;
+    border: 1px solid {p['border2']} !important;
+    color: {p['t1']} !important;
 }}
-.stButton > button[kind="secondary"]:hover {{
+.stButton > button[kind="secondary"]:hover,
+[data-testid="baseButton-secondary"]:hover,
+[data-testid="stBaseButton-secondary"]:hover {{
     border-color: {p['accent']} !important; color: {p['accent']} !important;
 }}
 /* ── DataFrames ──────────────────────────────────────── */
